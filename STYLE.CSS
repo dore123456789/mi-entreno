@@ -1,0 +1,30 @@
+body { font-family: sans-serif; margin: 16px; max-width: 480px; }
+
+.grupo {
+  padding: 12px 16px;
+  margin: 4px;
+  font-size: 16px;
+  border: 2px solid #888;
+  border-radius: 20px;
+  background: white;
+}
+
+.grupo.activo {
+  background: #1a73e8;
+  color: white;
+  border-color: #1a73e8;
+}
+
+#btn-proponer {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  margin-top: 16px;
+  font-size: 18px;
+  border: none;
+  border-radius: 10px;
+  background: #222;
+  color: white;
+}
+
+li { padding: 8px 0; font-size: 18px; }
