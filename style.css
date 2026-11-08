@@ -27,4 +27,27 @@ body { font-family: sans-serif; margin: 16px; max-width: 480px; }
   color: white;
 }
 
-li { padding: 8px 0; font-size: 18px; }
+li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 18px;
+}
+
+.cambiar {
+  padding: 6px 12px;
+  font-size: 14px;
+  border: 1px solid #888;
+  border-radius: 14px;
+  background: white;
+}
+.video {
+  padding: 6px 12px;
+  margin-right: 8px;
+  font-size: 14px;
+  border: 1px solid #1a73e8;
+  border-radius: 14px;
+  color: #1a73e8;
+  text-decoration: none;
+}

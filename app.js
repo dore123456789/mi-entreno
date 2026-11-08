@@ -1,5 +1,5 @@
 const ejercicios = [
-  { nombre: "Sentadilla", grupo: ["pierna"] },
+  { nombre: "Sentadilla", grupo: ["pierna"], video: "https://www.youtube.com/watch?v=QmZAiBqPvZw" },
   { nombre: "Zancadas", grupo: ["pierna"] },
   { nombre: "Peso muerto", grupo: ["pierna", "haltero"] },
   { nombre: "Arrancada", grupo: ["haltero", "pierna", "tren superior"] },
@@ -53,14 +53,68 @@ const botonesGrupo = document.querySelectorAll(".grupo");
 const botonProponer = document.getElementById("btn-proponer");
 const lista = document.getElementById("resultado");
 let gruposElegidos = [];
+let propuestaActual = [];
 
-function mostrar(textos) {
+function mostrarMensaje(texto) {
   lista.textContent = "";
-  for (const t of textos) {
-    const li = document.createElement("li");
-    li.textContent = t;
-    lista.appendChild(li);
+  const li = document.createElement("li");
+  li.textContent = texto;
+  lista.appendChild(li);
+}
+
+function buscarSustituto(ejercicio) {
+  // Grupos del ejercicio que además están elegidos hoy
+  const comunes = ejercicio.grupo.filter(g => gruposElegidos.includes(g));
+  const base = comunes.length > 0 ? comunes : ejercicio.grupo;
+
+  const candidatos = ejercicios.filter(e =>
+    e.grupo.some(g => base.includes(g)) && !propuestaActual.includes(e)
+  );
+  if (candidatos.length === 0) {
+    return null;
   }
+  return elegirAlAzar(candidatos, 1)[0];
+}
+
+function mostrarPropuesta() {
+  lista.textContent = "";
+  propuestaActual.forEach((ejercicio, i) => {
+    const li = document.createElement("li");
+
+    const nombre = document.createElement("span");
+    nombre.textContent = ejercicio.nombre;
+
+    const acciones = document.createElement("div");
+
+    if (ejercicio.video) {
+      const enlace = document.createElement("a");
+      enlace.textContent = "vídeo";
+      enlace.href = ejercicio.video;
+      enlace.target = "_blank";
+      enlace.rel = "noopener";
+      enlace.className = "video";
+      acciones.appendChild(enlace);
+    }
+
+    const boton = document.createElement("button");
+    boton.textContent = "cambiar";
+    boton.className = "cambiar";
+    boton.addEventListener("click", () => {
+      const sustituto = buscarSustituto(ejercicio);
+      if (sustituto === null) {
+        boton.textContent = "sin alternativas";
+        boton.disabled = true;
+        return;
+      }
+      propuestaActual[i] = sustituto;
+      mostrarPropuesta();
+    });
+    acciones.appendChild(boton);
+
+    li.appendChild(nombre);
+    li.appendChild(acciones);
+    lista.appendChild(li);
+  });
 }
 
 for (const boton of botonesGrupo) {
@@ -77,9 +131,10 @@ for (const boton of botonesGrupo) {
 
 botonProponer.addEventListener("click", () => {
   if (gruposElegidos.length === 0) {
-    mostrar(["Elige al menos un grupo"]);
+    propuestaActual = [];
+    mostrarMensaje("Elige al menos un grupo");
     return;
   }
-  const propuesta = proponerEntrenamiento(gruposElegidos, 5);
-  mostrar(propuesta.map(e => e.nombre));
+  propuestaActual = proponerEntrenamiento(gruposElegidos, 5);
+  mostrarPropuesta();
 });
