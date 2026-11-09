@@ -7,20 +7,47 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>¿Qué te apetece hoy?</h1>
 
-  <div>
-    <button class="grupo" data-grupo="pierna">Pierna</button>
-    <button class="grupo" data-grupo="tren superior">Tren superior</button>
-    <button class="grupo" data-grupo="cardio">Cardio</button>
-    <button class="grupo" data-grupo="wod">WOD</button>
-    <button class="grupo" data-grupo="haltero">Haltero</button>
-  </div>
+  <section id="pantalla-hoy">
+    <h1>¿Qué te apetece hoy?</h1>
 
-  <button id="btn-proponer">Proponer entrenamiento</button>
+    <div>
+      <button class="grupo" data-grupo="pierna">Pierna</button>
+      <button class="grupo" data-grupo="tren superior">Tren superior</button>
+      <button class="grupo" data-grupo="cardio">Cardio</button>
+      <button class="grupo" data-grupo="wod">WOD</button>
+      <button class="grupo" data-grupo="haltero">Haltero</button>
+    </div>
 
-  <h2>Tu entrenamiento</h2>
-  <ul id="resultado"></ul>
+    <button id="btn-proponer">Proponer entrenamiento</button>
+
+    <h2>Tu entrenamiento</h2>
+    <ul id="resultado"></ul>
+  </section>
+
+  <section id="pantalla-biblioteca" hidden>
+    <h1>Biblioteca</h1>
+
+    <label>
+      Filtrar por grupo:
+      <select id="filtro-biblioteca">
+        <option value="todos">Todos</option>
+        <option value="pierna">Pierna</option>
+        <option value="tren superior">Tren superior</option>
+        <option value="cardio">Cardio</option>
+        <option value="wod">WOD</option>
+        <option value="haltero">Haltero</option>
+      </select>
+    </label>
+
+    <p id="contador-biblioteca"></p>
+    <ul id="lista-biblioteca"></ul>
+  </section>
+
+  <nav>
+    <button class="nav-btn activo" data-pantalla="hoy">Hoy</button>
+    <button class="nav-btn" data-pantalla="biblioteca">Biblioteca</button>
+  </nav>
 
   <script src="app.js"></script>
 </body>

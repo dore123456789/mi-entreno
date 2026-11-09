@@ -1,4 +1,9 @@
-body { font-family: sans-serif; margin: 16px; max-width: 480px; }
+body {
+  font-family: sans-serif;
+  margin: 16px;
+  max-width: 480px;
+  padding-bottom: 72px;
+}
 
 .grupo {
   padding: 12px 16px;
@@ -31,6 +36,7 @@ li {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
   padding: 8px 0;
   font-size: 18px;
 }
@@ -42,6 +48,7 @@ li {
   border-radius: 14px;
   background: white;
 }
+
 .video {
   padding: 6px 12px;
   margin-right: 8px;
@@ -49,5 +56,54 @@ li {
   border: 1px solid #1a73e8;
   border-radius: 14px;
   color: #1a73e8;
-  text-decoration: none;
+  background: white;
+  cursor: pointer;
+}
+
+.contenedor-video {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.contenedor-video iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 10px;
+}
+
+nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  background: white;
+  border-top: 1px solid #ccc;
+}
+
+.nav-btn {
+  flex: 1;
+  padding: 16px;
+  font-size: 16px;
+  border: none;
+  background: white;
+}
+
+.nav-btn.activo {
+  font-weight: bold;
+  color: #1a73e8;
+}
+
+.info small {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: #666;
+}
+
+select {
+  font-size: 16px;
+  padding: 6px;
+  margin: 8px 0;
 }

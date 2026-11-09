@@ -47,7 +47,53 @@ function proponerEntrenamiento(gruposElegidos, cantidad) {
   return elegirAlAzar(elegidos, cantidad);
 }
 
-// ---------- Pantalla ----------
+// ---------- Vídeo ----------
+
+function obtenerIdVideo(url) {
+  try {
+    const u = new URL(url);
+    if (u.hostname === "youtu.be") return u.pathname.slice(1);
+    if (u.pathname.startsWith("/shorts/")) return u.pathname.split("/")[2];
+    if (u.pathname.startsWith("/embed/")) return u.pathname.split("/")[2];
+    return u.searchParams.get("v");
+  } catch {
+    return null;
+  }
+}
+
+// Crea el botón "vídeo" de un ejercicio (o null si no tiene vídeo).
+// Al pulsarlo muestra u oculta el reproductor dentro del elemento li.
+function crearBotonVideo(ejercicio, li) {
+  const idVideo = ejercicio.video ? obtenerIdVideo(ejercicio.video) : null;
+  if (!idVideo) {
+    return null;
+  }
+
+  const boton = document.createElement("button");
+  boton.textContent = "vídeo";
+  boton.className = "video";
+  boton.addEventListener("click", () => {
+    const abierto = li.querySelector(".contenedor-video");
+    if (abierto) {
+      abierto.remove();
+      return;
+    }
+    const contenedor = document.createElement("div");
+    contenedor.className = "contenedor-video";
+
+    const iframe = document.createElement("iframe");
+    iframe.src = "https://www.youtube-nocookie.com/embed/" + idVideo + "?playsinline=1";
+    iframe.title = "Vídeo de " + ejercicio.nombre;
+    iframe.allowFullscreen = true;
+    iframe.referrerPolicy = "strict-origin-when-cross-origin";
+
+    contenedor.appendChild(iframe);
+    li.appendChild(contenedor);
+  });
+  return boton;
+}
+
+// ---------- Pantalla "Hoy" ----------
 
 const botonesGrupo = document.querySelectorAll(".grupo");
 const botonProponer = document.getElementById("btn-proponer");
@@ -63,7 +109,6 @@ function mostrarMensaje(texto) {
 }
 
 function buscarSustituto(ejercicio) {
-  // Grupos del ejercicio que además están elegidos hoy
   const comunes = ejercicio.grupo.filter(g => gruposElegidos.includes(g));
   const base = comunes.length > 0 ? comunes : ejercicio.grupo;
 
@@ -86,14 +131,9 @@ function mostrarPropuesta() {
 
     const acciones = document.createElement("div");
 
-    if (ejercicio.video) {
-      const enlace = document.createElement("a");
-      enlace.textContent = "vídeo";
-      enlace.href = ejercicio.video;
-      enlace.target = "_blank";
-      enlace.rel = "noopener";
-      enlace.className = "video";
-      acciones.appendChild(enlace);
+    const botonVideo = crearBotonVideo(ejercicio, li);
+    if (botonVideo) {
+      acciones.appendChild(botonVideo);
     }
 
     const boton = document.createElement("button");
@@ -138,3 +178,64 @@ botonProponer.addEventListener("click", () => {
   propuestaActual = proponerEntrenamiento(gruposElegidos, 5);
   mostrarPropuesta();
 });
+
+// ---------- Pantalla "Biblioteca" ----------
+
+const filtroBiblioteca = document.getElementById("filtro-biblioteca");
+const contadorBiblioteca = document.getElementById("contador-biblioteca");
+const listaBiblioteca = document.getElementById("lista-biblioteca");
+
+function mostrarBiblioteca() {
+  const filtro = filtroBiblioteca.value;
+  const visibles = filtro === "todos" ? ejercicios : filtrarPorGrupo(filtro);
+
+  contadorBiblioteca.textContent = visibles.length + " ejercicios";
+  listaBiblioteca.textContent = "";
+
+  for (const ejercicio of visibles) {
+    const li = document.createElement("li");
+
+    const info = document.createElement("div");
+    info.className = "info";
+    const nombre = document.createElement("span");
+    nombre.textContent = ejercicio.nombre;
+    const grupos = document.createElement("small");
+    grupos.textContent = ejercicio.grupo.join(", ");
+    info.appendChild(nombre);
+    info.appendChild(grupos);
+    li.appendChild(info);
+
+    const botonVideo = crearBotonVideo(ejercicio, li);
+    if (botonVideo) {
+      li.appendChild(botonVideo);
+    }
+
+    listaBiblioteca.appendChild(li);
+  }
+}
+
+filtroBiblioteca.addEventListener("change", mostrarBiblioteca);
+
+// ---------- Navegación entre pantallas ----------
+
+const pantallas = {
+  hoy: document.getElementById("pantalla-hoy"),
+  biblioteca: document.getElementById("pantalla-biblioteca"),
+};
+const botonesNav = document.querySelectorAll(".nav-btn");
+
+function mostrarPantalla(nombre) {
+  for (const clave in pantallas) {
+    pantallas[clave].hidden = clave !== nombre;
+  }
+  for (const b of botonesNav) {
+    b.classList.toggle("activo", b.dataset.pantalla === nombre);
+  }
+  if (nombre === "biblioteca") {
+    mostrarBiblioteca();
+  }
+}
+
+for (const b of botonesNav) {
+  b.addEventListener("click", () => mostrarPantalla(b.dataset.pantalla));
+}
