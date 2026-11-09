@@ -2,12 +2,14 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Mi entreno</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<main>
 
+  <!-- ===== HOY ===== -->
   <section id="pantalla-hoy">
     <h1>¿Qué te apetece hoy?</h1>
 
@@ -19,17 +21,108 @@
       <button class="grupo" data-grupo="haltero">Haltero</button>
     </div>
 
-    <button id="btn-proponer">Proponer entrenamiento</button>
+    <button id="btn-proponer" class="principal">Proponer entrenamiento</button>
 
     <h2>Tu entrenamiento</h2>
     <ul id="resultado"></ul>
   </section>
 
+  <!-- ===== REGISTRO ===== -->
+  <section id="pantalla-registro" hidden>
+    <h1>Registro</h1>
+
+    <div class="tarjeta">
+      <h2>Últimos 7 días</h2>
+      <div id="resumen-semana" class="chips"></div>
+    </div>
+
+    <div class="tarjeta">
+      <h2>Nuevo entreno</h2>
+
+      <div class="fila">
+        <label>Fecha
+          <input type="date" id="reg-fecha">
+        </label>
+        <label>Tipo
+          <select id="reg-tipo">
+            <option value="clase">Clase</option>
+            <option value="propio">Mi entreno</option>
+          </select>
+        </label>
+      </div>
+
+      <h3>Añadir ejercicio</h3>
+      <form id="form-fuerza" novalidate>
+        <label>Ejercicio
+          <select id="fuerza-ejercicio"></select>
+        </label>
+        <div class="fila">
+          <label>Series
+            <input type="number" id="fuerza-series" min="1" inputmode="numeric">
+          </label>
+          <label>Reps
+            <input type="number" id="fuerza-reps" min="1" inputmode="numeric">
+          </label>
+          <label>Esfuerzo
+            <select id="fuerza-esfuerzo"></select>
+          </label>
+        </div>
+        <button type="submit" class="secundario">Añadir ejercicio</button>
+      </form>
+
+      <h3>Añadir WOD</h3>
+      <form id="form-wod" novalidate>
+        <div class="fila">
+          <label>Formato
+            <select id="wod-formato">
+              <option>AMRAP</option>
+              <option>EMOM</option>
+              <option>Por tiempo</option>
+              <option>Otro</option>
+            </select>
+          </label>
+          <label>Detalle
+            <input type="text" id="wod-detalle" placeholder="12 min, 21-15-9...">
+          </label>
+        </div>
+
+        <div class="fila">
+          <label>Movimiento
+            <select id="wod-ejercicio"></select>
+          </label>
+          <label>Reps
+            <input type="number" id="wod-reps" min="1" inputmode="numeric">
+          </label>
+        </div>
+        <button type="button" id="btn-wod-mov" class="secundario">+ Añadir movimiento al WOD</button>
+        <ul id="wod-movimientos"></ul>
+
+        <div class="fila">
+          <label>Resultado
+            <input type="text" id="wod-resultado" placeholder="5 rondas, 9:42...">
+          </label>
+          <label>Esfuerzo
+            <select id="wod-esfuerzo"></select>
+          </label>
+        </div>
+        <button type="submit" class="secundario">Añadir WOD al entreno</button>
+      </form>
+
+      <h3>Este entreno</h3>
+      <ul id="borrador"></ul>
+      <p id="mensaje-registro" class="mensaje" role="status"></p>
+      <button id="btn-guardar-entreno" class="principal">Guardar entreno</button>
+    </div>
+
+    <h2>Historial</h2>
+    <ul id="historial"></ul>
+  </section>
+
+  <!-- ===== BIBLIOTECA ===== -->
   <section id="pantalla-biblioteca" hidden>
     <h1>Biblioteca</h1>
 
-    <label>
-      Filtrar por grupo:
+    <label>Filtrar por grupo
       <select id="filtro-biblioteca">
         <option value="todos">Todos</option>
         <option value="pierna">Pierna</option>
@@ -40,15 +133,18 @@
       </select>
     </label>
 
-    <p id="contador-biblioteca"></p>
+    <p id="contador-biblioteca" class="mensaje"></p>
     <ul id="lista-biblioteca"></ul>
   </section>
 
-  <nav>
-    <button class="nav-btn activo" data-pantalla="hoy">Hoy</button>
-    <button class="nav-btn" data-pantalla="biblioteca">Biblioteca</button>
-  </nav>
+</main>
 
-  <script src="app.js"></script>
+<nav>
+  <button class="nav-btn activo" data-pantalla="hoy">Hoy</button>
+  <button class="nav-btn" data-pantalla="registro">Registro</button>
+  <button class="nav-btn" data-pantalla="biblioteca">Biblioteca</button>
+</nav>
+
+<script src="app.js"></script>
 </body>
 </html>
