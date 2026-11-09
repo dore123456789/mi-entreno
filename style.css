@@ -510,6 +510,9 @@ label > input, label > select { margin-top: 4px; }
   gap: 8px;
 }
 .reg-cabecera .nombre { font-size: 17px; font-weight: 700; }
+.reg-cabecera.libre { align-items: flex-end; }
+.reg-cabecera.libre > label { flex: 1; min-width: 0; margin: 0; }
+.reg-cabecera.libre > .mini { margin-bottom: 8px; }
 .reg-cabecera .pill { margin-left: 0; }
 .tarjeta-reg .ayuda { margin: 2px 0 4px; font-size: 13px; }
 .tarjeta-reg.saltado > :not(.reg-cabecera) { opacity: 0.35; }
@@ -574,6 +577,139 @@ label > input, label > select { margin-top: 4px; }
 }
 .toast[hidden] { display: none; }
 
+/* ---------- Clase desde foto ---------- */
+
+.tarjeta.foto .principal { margin: 0 0 8px; }
+.vista-foto {
+  display: block;
+  max-width: 100%;
+  max-height: 220px;
+  margin: 8px auto;
+  border-radius: 12px;
+  object-fit: contain;
+}
+.estado-foto { margin: 6px 0 0; font-size: 14px; font-weight: 600; }
+.estado-foto:empty { display: none; }
+.estado-foto.error { color: var(--error); }
+.tarjeta.foto details { margin-top: 8px; font-size: 13px; color: var(--suave); }
+.tarjeta.foto summary { cursor: pointer; font-weight: 600; }
+.tarjeta.foto pre {
+  max-height: 200px;
+  overflow: auto;
+  margin: 6px 0 0;
+  padding: 10px;
+  font-size: 12px;
+  white-space: pre-wrap;
+  background: var(--fondo);
+  border-radius: 10px;
+}
+
+/* ---------- Plan ---------- */
+
+.botones-dobles { display: flex; gap: 8px; margin: 4px 0 8px; }
+.botones-dobles .secundario { margin-top: 0; }
+.secundario.activo { color: var(--acento-texto); background: var(--acento); }
+
+.dias { display: flex; gap: 6px; flex-wrap: wrap; }
+.dia {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--texto);
+  background: var(--fondo);
+  border: 1.5px solid var(--borde);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.dia input { position: absolute; opacity: 0; pointer-events: none; }
+.dia:has(input:checked) { color: var(--acento-texto); background: var(--acento); border-color: var(--acento); }
+.dia:has(input:focus-visible) { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+.tarjeta.plan-hoy {
+  background: linear-gradient(150deg, var(--acento), color-mix(in srgb, var(--acento) 70%, #000));
+  border: none;
+  color: #fff;
+}
+.plan-hoy .ayuda, .plan-hoy small { color: rgba(255, 255, 255, 0.8); }
+.plan-hoy .etiqueta-semana {
+  display: inline-block;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+}
+.plan-hoy .sesion-nombre { margin: 10px 0 2px; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+.plan-hoy .sesion-principal { margin: 0; font-size: 16px; font-weight: 600; }
+.plan-hoy .principal {
+  margin-bottom: 0;
+  color: var(--acento);
+  background: #fff;
+  box-shadow: none;
+}
+.plan-hoy .hecho-hoy { margin: 12px 0 0; font-weight: 700; }
+
+.progreso {
+  height: 8px;
+  margin: 10px 0 4px;
+  overflow: hidden;
+  background: var(--fondo);
+  border-radius: 999px;
+}
+.progreso > span { display: block; height: 100%; background: var(--acento); border-radius: 999px; }
+
+.semana-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.semana-nav h2 { margin: 0; text-align: center; }
+.semana-nav small { display: block; font-size: 13px; font-weight: 600; color: var(--suave); }
+.flecha {
+  width: 38px;
+  height: 38px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--acento);
+  background: var(--acento-suave);
+  border: none;
+  border-radius: 50%;
+}
+
+.dia-plan {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--borde);
+}
+.dia-plan:last-child { border-bottom: none; }
+.dia-plan.es-hoy { margin: 0 -10px; padding: 12px 10px; background: var(--acento-suave); border-radius: 14px; border-bottom-color: transparent; }
+.dia-fecha { width: 42px; flex-shrink: 0; text-align: center; }
+.dia-fecha strong { display: block; font-size: 13px; color: var(--suave); text-transform: uppercase; }
+.dia-fecha span { font-size: 20px; font-weight: 800; }
+.dia-plan.descanso .info { color: var(--suave); }
+
+.estado-dia {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  background: var(--fondo);
+  color: var(--suave);
+}
+.estado-dia.hecho { color: #fff; background: var(--m-baja); }
+.estado-dia.hoy { color: var(--acento-texto); background: var(--acento); }
+.estado-dia.fallado { color: var(--m-alta); }
+
 /* ---------- Navegación inferior ---------- */
 
 nav {
@@ -591,18 +727,20 @@ nav {
 }
 .nav-btn {
   flex: 1;
+  min-width: 0;
   max-width: 96px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
   padding: 6px 0 8px;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 600;
   color: var(--suave);
   background: transparent;
   border: none;
 }
+.nav-btn span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav-btn svg {
   width: 24px;
   height: 24px;

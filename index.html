@@ -16,6 +16,27 @@
     <p id="saludo" class="saludo"></p>
     <h1>¿Qué toca hoy?</h1>
 
+    <div id="hoy-plan"></div>
+
+    <div class="botones-dobles">
+      <button type="button" id="btn-otro" class="secundario">Otro entreno</button>
+      <button type="button" id="btn-clase" class="secundario">Clase del box</button>
+    </div>
+
+    <div id="otro-entreno" hidden>
+      <h2>Otro entreno <span class="opcional">al margen del plan</span></h2>
+      <p class="ayuda">Elige un foco o deja que la app decida según tu carga.</p>
+      <div class="focos">
+        <button class="grupo" data-grupo="pierna">Pierna</button>
+        <button class="grupo" data-grupo="tren superior">Tren superior</button>
+        <button class="grupo" data-grupo="haltero">Haltero</button>
+        <button class="grupo" data-grupo="core">Core</button>
+      </div>
+      <button id="btn-proponer" class="principal">Proponer entrenamiento</button>
+    </div>
+
+    <div id="propuesta"></div>
+
     <button id="resumen-cuerpo" class="tarjeta tarjeta-boton" type="button">
       <span class="tarjeta-cabecera">
         <span class="titulo-tarjeta">Tu cuerpo hoy</span>
@@ -23,19 +44,12 @@
       </span>
       <span id="carga-hoy" class="chips"></span>
     </button>
+  </section>
 
-    <h2>Foco <span class="opcional">opcional</span></h2>
-    <p class="ayuda">Si no eliges nada, la app decide según tu carga.</p>
-    <div class="focos">
-      <button class="grupo" data-grupo="pierna">Pierna</button>
-      <button class="grupo" data-grupo="tren superior">Tren superior</button>
-      <button class="grupo" data-grupo="haltero">Haltero</button>
-      <button class="grupo" data-grupo="core">Core</button>
-    </div>
-
-    <button id="btn-proponer" class="principal">Proponer entrenamiento</button>
-
-    <div id="propuesta"></div>
+  <!-- ===== PLAN ===== -->
+  <section id="pantalla-plan" hidden>
+    <h1>Tu plan</h1>
+    <div id="plan-contenido"></div>
   </section>
 
   <!-- ===== CUERPO ===== -->
@@ -248,8 +262,18 @@
     </p>
 
     <form id="form-perfil" class="tarjeta">
-      <h2>Objetivo</h2>
+      <h2>¿Qué quieres mejorar?</h2>
       <div id="perfil-objetivos"></div>
+
+      <h2>¿Qué días entrenas?</h2>
+      <p class="ayuda">Tu plan pondrá una sesión en cada día marcado (de 2 a 6). Las clases del box las apuntas aparte.</p>
+      <div id="perfil-dias" class="dias"></div>
+
+      <h2>Duración del plan</h2>
+      <div class="fila">
+        <label class="opcion"><input type="radio" name="semanas" value="8"> <span><strong>8 semanas</strong><small>2 bloques</small></span></label>
+        <label class="opcion"><input type="radio" name="semanas" value="12"> <span><strong>12 semanas</strong><small>3 bloques</small></span></label>
+      </div>
 
       <h2>Zonas a cuidar</h2>
       <p class="ayuda">No se te propondrán ejercicios que las carguen.</p>
@@ -257,7 +281,7 @@
       <label class="opcion"><input type="checkbox" name="cuidar" value="rodilla"> Rodillas</label>
       <label class="opcion"><input type="checkbox" name="cuidar" value="hombro"> Hombros</label>
 
-      <button type="submit" class="principal">Guardar perfil</button>
+      <button type="submit" class="principal">Guardar y crear mi plan</button>
       <p id="mensaje-perfil" class="mensaje" role="status"></p>
     </form>
   </section>
@@ -268,6 +292,10 @@
   <button class="nav-btn" data-pantalla="hoy">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg>
     <span>Hoy</span>
+  </button>
+  <button class="nav-btn" data-pantalla="plan">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+    <span>Plan</span>
   </button>
   <button class="nav-btn" data-pantalla="cuerpo">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.5" r="2.3"/><path d="M5 9l7 1.5L19 9M12 10.5V15M8.5 21.5L12 15l3.5 6.5"/></svg>
@@ -307,6 +335,10 @@
       </label>
     </div>
     <div id="hoja-bloques"></div>
+    <div id="hoja-anadir" class="botones-dobles" hidden>
+      <button type="button" id="hoja-mas-ejercicio" class="secundario">+ Ejercicio</button>
+      <button type="button" id="hoja-mas-wod" class="secundario">+ WOD</button>
+    </div>
   </div>
   <div class="hoja-pie">
     <p id="hoja-mensaje" class="mensaje error" role="status"></p>
@@ -318,6 +350,8 @@
 
 <script src="ejercicios.js"></script>
 <script src="motor.js"></script>
+<script src="plan.js"></script>
+<script src="foto.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

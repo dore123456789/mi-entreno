@@ -342,10 +342,12 @@ function crearCalentamiento(propuesta, perfil, anterior) {
 //   movilidad: [...]  (solo si hoy toca descanso)
 // }
 
+// datos.sesion (opcional): la sesión del plan de hoy (ver plan.js). Si viene,
+// manda sobre los focos y fija el ejercicio principal y su esquema.
 function crearContexto(datos) {
   return {
     perfil: datos.perfil,
-    focos: datos.focos,
+    focos: datos.sesion ? datos.sesion.focos : datos.focos,
     fatiga: calcularFatiga(datos.entrenos, datos.hoy),
   };
 }
@@ -373,7 +375,35 @@ function proponerEntreno(datos) {
   // Bloque de fuerza. Cada ejercicio elegido suma su carga "de mentira" a la
   // fatiga, así el siguiente hueco evita los mismos músculos.
   const fuerza = [];
-  for (let h = 0; h < HUECOS_FUERZA.length; h++) {
+  const sesion = datos.sesion || null;
+  let primerHueco = 0;
+
+  // Con plan: el primer hueco es el ejercicio principal de la sesión, con el
+  // esquema de la semana. Si hoy está sobrecargado, se avisa y se cambia.
+  if (sesion && sesion.principal) {
+    const e = porId[sesion.principal];
+    if (respetaCuidados(e, ctx.perfil) && !estaSobrecargado(e, ctx.fatiga)) {
+      fuerza.push({
+        hueco: 0,
+        ejercicio: e.id,
+        series: sesion.esquema.series,
+        reps: sesion.esquema.reps,
+        esfuerzoObjetivo: sesion.esquema.esfuerzo,
+        delPlan: true,
+      });
+      sumarCarga(ctx.fatiga, e, sesion.esquema.series);
+      primerHueco = 1;
+    } else if (bloqueos.length === 0) {
+      const cargados = e.musculos.filter(m => fatigaInicial[m] >= UMBRAL_ALTO).map(m => MUSCULOS[m]);
+      avisos.push("Tu plan marcaba " + e.nombre + " hoy, pero tienes " + cargados.join(" y ")
+        + " con carga alta. Lo cambiamos por otro ejercicio para no sobrecargar.");
+    }
+  }
+
+  // Huecos a rellenar: los de la sesión del plan si los fija, o los tres normales.
+  const huecos = sesion && sesion.huecos ? sesion.huecos : HUECOS_FUERZA.map((_, i) => i);
+  for (let k = primerHueco; k < huecos.length; k++) {
+    const h = huecos[k];
     const usados = fuerza.map(f => f.ejercicio);
     const e = elegirMenosCargado(candidatosFuerza(h, ctx, usados), ctx.fatiga);
     if (!e) {
@@ -402,6 +432,8 @@ function proponerEntreno(datos) {
   if (movimientos.length > 0) {
     const [minMin, maxMin] = OBJETIVOS[objetivo].wodMin;
     let minutos = aleatorioEntre(minMin, maxMin);
+    if (sesion && sesion.wodLargo) minutos = Math.round(minutos * 1.4);
+    if (sesion && sesion.esquema.descarga) minutos = Math.max(6, Math.round(minutos * 0.7));
     let detalle;
     if (formato === "AMRAP") {
       detalle = minutos + " min";
@@ -416,7 +448,22 @@ function proponerEntreno(datos) {
     wod = { formato: formato, detalle: detalle, minutos: minutos, factorReps: factorReps, movimientos: movimientos };
   }
 
-  const propuesta = { avisos: avisos, fuerza: fuerza, ligero: ligero, wod: wod, calentamiento: null, movilidad: null };
+  // Semana de descarga: una serie menos en los accesorios.
+  if (sesion && sesion.esquema.descarga) {
+    for (const f of fuerza) {
+      if (!f.delPlan) f.series = Math.max(2, f.series - 1);
+    }
+  }
+
+  const propuesta = {
+    sesion: sesion,
+    avisos: avisos,
+    fuerza: fuerza,
+    ligero: ligero,
+    wod: wod,
+    calentamiento: null,
+    movilidad: null,
+  };
 
   if (fuerza.length === 0) {
     // Ningún ejercicio de fuerza es seguro: día de descanso con movilidad

@@ -31,12 +31,23 @@ let entrenos = datosEntrenos && Array.isArray(datosEntrenos.entrenos)
 const borradorGuardado = leerGuardado("borrador", []);
 let borrador = Array.isArray(borradorGuardado) ? borradorGuardado : [];
 
-// Perfil: { version, objetivo, cuidar: ["lumbar", ...] }. null = aún no configurado.
+// Perfil: { version, objetivo, cuidar, dias: [0, 2, 4], semanas: 8 }.
+// null = aún no configurado.
 let perfil = leerGuardado("perfil", null);
 if (!perfil || !OBJETIVOS[perfil.objetivo]) {
   perfil = null;
 } else if (!Array.isArray(perfil.cuidar)) {
   perfil.cuidar = [];
+}
+
+// Plan de entreno (ver plan.js). null = aún no creado.
+let plan = leerGuardado("plan", null);
+if (!plan || plan.version !== 1 || !plan.sesiones) {
+  plan = null;
+}
+
+function guardarPlan() {
+  return escribirGuardado("plan", plan);
 }
 
 function guardarEntrenos() {
@@ -188,8 +199,16 @@ const cargaHoy = document.getElementById("carga-hoy");
 let focos = [];
 let propuesta = null;
 
+// Datos para el motor. Si la propuesta actual es del plan, se mantiene su sesión
+// (así "cambiar" respeta el foco de la sesión).
 function datosMotor() {
-  return { perfil: perfil, focos: focos, entrenos: entrenos, hoy: new Date() };
+  return {
+    perfil: perfil,
+    focos: focos,
+    sesion: propuesta && propuesta.sesion ? propuesta.sesion : null,
+    entrenos: entrenos,
+    hoy: new Date(),
+  };
 }
 
 // Fila con número, nombre, esquema (opcional), detalle y botones "vídeo" y "cambiar".
@@ -358,13 +377,14 @@ function pintarFuerza() {
       i + 1,
       e,
       e.nombre,
-      f.series + "×" + f.reps,
-      textoMusculos(e),
+      f.series + "×" + f.reps + (f.esfuerzoObjetivo ? " · ≈" + f.esfuerzoObjetivo + "%" : ""),
+      (f.delPlan ? "principal del plan · " : "") + textoMusculos(e),
       () => sustituirEnPropuesta(propuesta, datosMotor(), "fuerza", i)
     ));
   });
   tarjeta.appendChild(ul);
-  if (propuesta.fuerza.length < HUECOS_FUERZA.length) {
+  const esperados = propuesta.sesion && propuesta.sesion.huecos ? propuesta.sesion.huecos.length : HUECOS_FUERZA.length;
+  if (propuesta.fuerza.length < esperados) {
     tarjeta.appendChild(crearParrafo("Bloque más corto: hay músculos que necesitan descanso.", "ayuda"));
   }
   contenedorPropuesta.appendChild(tarjeta);
@@ -454,6 +474,7 @@ const hojaTipo = document.getElementById("hoja-tipo");
 const hojaBloques = document.getElementById("hoja-bloques");
 const hojaMensaje = document.getElementById("hoja-mensaje");
 const toast = document.getElementById("toast");
+const hojaAnadir = document.getElementById("hoja-anadir");
 
 // Lo que se ha pintado en la hoja, para leerlo al guardar.
 let filasHoja = [];
@@ -530,73 +551,180 @@ function textoUltimaVez(b) {
     + (b.esfuerzo ? " · " + b.esfuerzo + "%" : "");
 }
 
+// Tarjeta de un ejercicio de fuerza en la hoja.
+//  - item con ejercicio: viene de la propuesta (interruptor "Hecho").
+//  - item null: clase del box (se elige el ejercicio y se puede quitar).
 function crearTarjetaEjercicio(item, etiqueta) {
-  const e = porId[item.ejercicio];
+  const libre = item === null;
   const tarjeta = document.createElement("div");
   tarjeta.className = "tarjeta tarjeta-reg";
+  const fila = { tipo: "fuerza", tarjeta: tarjeta };
 
   const cabecera = document.createElement("div");
   cabecera.className = "reg-cabecera";
-  const titulo = document.createElement("div");
-  const nombre = document.createElement("span");
-  nombre.className = "nombre";
-  nombre.textContent = e.nombre + " ";
-  const pill = document.createElement("span");
-  pill.className = "pill";
-  pill.textContent = etiqueta;
-  titulo.append(nombre, pill);
-  const hecho = crearInterruptorHecho(tarjeta);
-  cabecera.append(titulo, hecho.label);
-  tarjeta.appendChild(cabecera);
-
-  const anterior = ultimaVez(e.id);
-  tarjeta.appendChild(crearParrafo(textoUltimaVez(anterior), "ayuda"));
-
-  const series = crearNumero(item.series);
-  const reps = crearNumero(item.reps);
+  const ayuda = crearParrafo("", "ayuda");
   // Kg: se rellena con lo de la última vez para ir rápido; se cambia si has subido.
-  const kg = crearNumero(anterior && anterior.kg ? anterior.kg : "", "—", true);
-  const esfuerzo = crearSelectEsfuerzo();
+  const kg = crearNumero("", "—", true);
 
-  tarjeta.appendChild(crearFila(crearCampo("Series", series), crearCampo("Reps", reps), crearCampo("Kg", kg)));
-  tarjeta.appendChild(crearCampo("Esfuerzo", esfuerzo));
+  function actualizarUltimaVez(id) {
+    const anterior = ultimaVez(id);
+    let texto = textoUltimaVez(anterior);
+    if (item && item.esfuerzoObjetivo) {
+      texto = "Objetivo del plan: ≈" + item.esfuerzoObjetivo + "%. " + texto;
+    }
+    ayuda.textContent = texto;
+    kg.value = anterior && anterior.kg ? String(anterior.kg) : "";
+  }
 
-  filasHoja.push({ tipo: "fuerza", ejercicio: e.id, nombre: e.nombre, hecho: hecho.casilla, series, reps, kg, esfuerzo });
+  if (libre) {
+    const select = document.createElement("select");
+    rellenarSelectEjercicios(select, false);
+    select.addEventListener("change", () => actualizarUltimaVez(select.value));
+    fila.select = select;
+    cabecera.classList.add("libre");
+    cabecera.append(crearCampo("Ejercicio", select), crearBotonMini("quitar", () => quitarFilaHoja(fila)));
+  } else {
+    const e = porId[item.ejercicio];
+    const titulo = document.createElement("div");
+    const nombre = document.createElement("span");
+    nombre.className = "nombre";
+    nombre.textContent = e.nombre + " ";
+    const pill = document.createElement("span");
+    pill.className = "pill";
+    pill.textContent = etiqueta;
+    titulo.append(nombre, pill);
+    const hecho = crearInterruptorHecho(tarjeta);
+    cabecera.append(titulo, hecho.label);
+    fila.ejercicio = e.id;
+    fila.hecho = hecho.casilla;
+  }
+  tarjeta.append(cabecera, ayuda);
+
+  fila.series = crearNumero(libre ? "" : item.series);
+  fila.reps = crearNumero(libre ? "" : item.reps);
+  fila.kg = kg;
+  fila.esfuerzo = crearSelectEsfuerzo();
+  tarjeta.appendChild(crearFila(crearCampo("Series", fila.series), crearCampo("Reps", fila.reps), crearCampo("Kg", kg)));
+  tarjeta.appendChild(crearCampo("Esfuerzo", fila.esfuerzo));
+
+  actualizarUltimaVez(libre ? fila.select.value : item.ejercicio);
+  filasHoja.push(fila);
   return tarjeta;
 }
 
-function crearTarjetaWodHoja(wod) {
-  const tarjeta = document.createElement("div");
-  tarjeta.className = "tarjeta tarjeta-reg wod";
+function quitarFilaHoja(fila) {
+  filasHoja = filasHoja.filter(f => f !== fila);
+  fila.tarjeta.remove();
+}
 
-  const cabecera = document.createElement("div");
-  cabecera.className = "reg-cabecera";
-  const titulo = crearCabecera("WOD", wod.formato.toUpperCase());
-  const hecho = crearInterruptorHecho(tarjeta);
-  cabecera.append(titulo, hecho.label);
-  tarjeta.appendChild(cabecera);
+// Campos del resultado del WOD según el formato. Los guarda en "fila".
+function pintarCamposResultado(contenedor, fila, formato, minutos) {
+  contenedor.textContent = "";
+  fila.rondas = fila.extra = fila.completados = fila.min = fila.seg = null;
 
-  tarjeta.appendChild(crearParrafo(wod.detalle, "ayuda"));
-  tarjeta.appendChild(crearParrafo(wod.movimientos.map(textoMovimiento).join(" · "), "movs-wod"));
-
-  const fila = { tipo: "wod", wod: wod, hecho: hecho.casilla };
-
-  if (wod.formato === "AMRAP") {
+  if (formato === "AMRAP") {
     fila.rondas = crearNumero("", "0");
     fila.extra = crearNumero("", "0");
-    tarjeta.appendChild(crearFila(crearCampo("Rondas", fila.rondas), crearCampo("Reps de más", fila.extra)));
-  } else if (wod.formato === "EMOM") {
-    fila.completados = crearNumero(wod.minutos, "");
-    tarjeta.appendChild(crearCampo("Minutos completados (de " + wod.minutos + ")", fila.completados));
+    contenedor.appendChild(crearFila(crearCampo("Rondas", fila.rondas), crearCampo("Reps de más", fila.extra)));
+  } else if (formato === "EMOM") {
+    fila.completados = crearNumero(minutos || "", "");
+    const texto = minutos ? "Minutos completados (de " + minutos + ")" : "Minutos completados";
+    contenedor.appendChild(crearCampo(texto, fila.completados));
   } else {
     fila.min = crearNumero("", "min");
     fila.seg = crearNumero("", "seg");
     const dosPuntos = document.createElement("span");
     dosPuntos.className = "separador-tiempo";
     dosPuntos.textContent = ":";
-    tarjeta.appendChild(crearFila(crearCampo("Tiempo (min)", fila.min), dosPuntos, crearCampo("seg", fila.seg)));
+    contenedor.appendChild(crearFila(crearCampo("Tiempo (min)", fila.min), dosPuntos, crearCampo("seg", fila.seg)));
+  }
+}
+
+// Tarjeta del WOD en la hoja.
+//  - wod de la propuesta: formato y movimientos fijos (interruptor "Hecho").
+//  - wod null: clase del box (formato, minutos y movimientos a mano).
+function crearTarjetaWodHoja(wod) {
+  const libre = wod === null;
+  const tarjeta = document.createElement("div");
+  tarjeta.className = "tarjeta tarjeta-reg wod";
+  const fila = { tipo: "wod", tarjeta: tarjeta, wod: wod };
+
+  const cabecera = document.createElement("div");
+  cabecera.className = "reg-cabecera";
+  const zonaResultado = document.createElement("div");
+
+  if (libre) {
+    cabecera.append(crearCabecera("WOD"), crearBotonMini("quitar", () => quitarFilaHoja(fila)));
+    tarjeta.appendChild(cabecera);
+
+    const formato = document.createElement("select");
+    for (const f of ["AMRAP", "EMOM", "Por tiempo", "Otro"]) {
+      const opcion = document.createElement("option");
+      opcion.textContent = f;
+      formato.appendChild(opcion);
+    }
+    const minutos = crearNumero("", "min");
+    const detalle = document.createElement("input");
+    detalle.type = "text";
+    detalle.placeholder = "21-15-9, 5 rondas...";
+    tarjeta.appendChild(crearFila(crearCampo("Formato", formato), crearCampo("Minutos", minutos)));
+    tarjeta.appendChild(crearCampo("Detalle (opcional)", detalle));
+
+    // Movimientos
+    fila.movs = [];
+    const movSelect = document.createElement("select");
+    rellenarSelectEjercicios(movSelect, true);
+    const movReps = crearNumero("", "reps");
+    const filaMov = crearFila(crearCampo("Movimiento", movSelect), crearCampo("Reps", movReps));
+    filaMov.lastChild.classList.add("estrecho");
+    const lista = document.createElement("ul");
+    const pintarMovs = () => {
+      lista.textContent = "";
+      fila.movs.forEach((mov, i) => {
+        const li = document.createElement("li");
+        li.className = "bloque";
+        const texto = document.createElement("span");
+        texto.textContent = textoMovimiento(mov);
+        li.append(texto, crearBotonMini("quitar", () => { fila.movs.splice(i, 1); pintarMovs(); }));
+        lista.appendChild(li);
+      });
+    };
+    const botonMov = document.createElement("button");
+    botonMov.type = "button";
+    botonMov.className = "secundario";
+    botonMov.textContent = "+ Añadir movimiento";
+    botonMov.addEventListener("click", () => {
+      const reps = enteroPositivo(movReps.value);
+      if (reps === null) {
+        hojaMensaje.textContent = "Pon las reps del movimiento.";
+        return;
+      }
+      hojaMensaje.textContent = "";
+      fila.movs.push({ ejercicio: movSelect.value, reps: reps });
+      movReps.value = "";
+      pintarMovs();
+    });
+    tarjeta.append(filaMov, botonMov, lista);
+
+    const repintar = () => pintarCamposResultado(zonaResultado, fila, formato.value, enteroPositivo(minutos.value));
+    formato.addEventListener("change", repintar);
+    minutos.addEventListener("change", () => { if (formato.value === "EMOM") repintar(); });
+    fila.formatoSelect = formato;
+    fila.minutosInput = minutos;
+    fila.detalleInput = detalle;
+    fila.pintarMovs = pintarMovs;
+    repintar();
+  } else {
+    const hecho = crearInterruptorHecho(tarjeta);
+    cabecera.append(crearCabecera("WOD", wod.formato.toUpperCase()), hecho.label);
+    tarjeta.appendChild(cabecera);
+    tarjeta.appendChild(crearParrafo(wod.detalle, "ayuda"));
+    tarjeta.appendChild(crearParrafo(wod.movimientos.map(textoMovimiento).join(" · "), "movs-wod"));
+    fila.hecho = hecho.casilla;
+    pintarCamposResultado(zonaResultado, fila, wod.formato, wod.minutos);
   }
 
+  tarjeta.appendChild(zonaResultado);
   fila.esfuerzo = crearSelectEsfuerzo();
   tarjeta.appendChild(crearCampo("Esfuerzo", fila.esfuerzo));
 
@@ -604,39 +732,177 @@ function crearTarjetaWodHoja(wod) {
   return tarjeta;
 }
 
-function abrirHoja() {
+// modo: "propuesta" (lo propuesto en Hoy) o "clase" (clase del box, a mano).
+let modoHoja = "propuesta";
+
+function prepararHoja(modo, titulo, tipo) {
+  modoHoja = modo;
   filasHoja = [];
   hojaBloques.textContent = "";
   hojaMensaje.textContent = "";
+  document.getElementById("hoja-titulo").textContent = titulo;
   hojaFecha.value = fechaISO(new Date());
-  hojaTipo.value = "propio";
+  hojaTipo.value = tipo;
+  hojaAnadir.hidden = modo !== "clase";
+}
+
+function mostrarHoja() {
+  hoja.hidden = false;
+  document.body.style.overflow = "hidden";
+  hoja.querySelector(".hoja-cuerpo").scrollTop = 0;
+}
+
+function anadirTitulo(texto) {
+  const h3 = document.createElement("h3");
+  h3.textContent = texto;
+  hojaBloques.appendChild(h3);
+}
+
+function abrirHoja() {
+  prepararHoja("propuesta", "¿Cómo ha ido?", "propio");
 
   if (propuesta.fuerza.length > 0) {
-    const h3 = document.createElement("h3");
-    h3.textContent = "Fuerza";
-    hojaBloques.appendChild(h3);
+    anadirTitulo("Fuerza");
     for (const f of propuesta.fuerza) {
       hojaBloques.appendChild(crearTarjetaEjercicio(f, f.series + "×" + f.reps));
     }
   }
   if (propuesta.ligero.length > 0) {
-    const h3 = document.createElement("h3");
-    h3.textContent = "Bloque ligero";
-    hojaBloques.appendChild(h3);
+    anadirTitulo("Bloque ligero");
     for (const l of propuesta.ligero) {
       hojaBloques.appendChild(crearTarjetaEjercicio(l, "ligero"));
     }
   }
   if (propuesta.wod) {
-    const h3 = document.createElement("h3");
-    h3.textContent = "WOD";
-    hojaBloques.appendChild(h3);
+    anadirTitulo("WOD");
     hojaBloques.appendChild(crearTarjetaWodHoja(propuesta.wod));
   }
+  mostrarHoja();
+}
 
-  hoja.hidden = false;
-  document.body.style.overflow = "hidden";
-  hoja.querySelector(".hoja-cuerpo").scrollTop = 0;
+function abrirHojaClase() {
+  prepararHoja("clase", "Clase del box", "clase");
+  hojaBloques.appendChild(crearBloqueFoto());
+  hojaBloques.appendChild(crearParrafo(
+    "O apúntalo a mano. Así la app sabe qué músculos has cargado.",
+    "ayuda"
+  ));
+  hojaBloques.appendChild(crearTarjetaEjercicio(null));
+  hojaBloques.appendChild(crearTarjetaWodHoja(null));
+  mostrarHoja();
+}
+
+// --- Leer la clase desde una foto o captura (ver foto.js) ---
+
+function crearBloqueFoto() {
+  const tarjeta = document.createElement("div");
+  tarjeta.className = "tarjeta foto";
+
+  const entrada = document.createElement("input");
+  entrada.type = "file";
+  entrada.accept = "image/*";
+  entrada.hidden = true;
+
+  const boton = crearBoton("📷 Leer desde foto o captura", "principal", () => entrada.click());
+  const ayuda = crearParrafo(
+    "Haz una foto a la pizarra o elige una captura de la app del box. Se lee en el móvil: la foto no se envía a ningún sitio.",
+    "ayuda"
+  );
+  const vista = document.createElement("img");
+  vista.className = "vista-foto";
+  vista.alt = "Foto de la clase";
+  vista.hidden = true;
+  const estado = crearParrafo("", "estado-foto");
+  const detalles = document.createElement("details");
+  detalles.hidden = true;
+  const resumen = document.createElement("summary");
+  resumen.textContent = "Texto leído";
+  const pre = document.createElement("pre");
+  detalles.append(resumen, pre);
+
+  entrada.addEventListener("change", async () => {
+    const archivo = entrada.files[0];
+    entrada.value = "";
+    if (!archivo) return;
+
+    boton.disabled = true;
+    estado.classList.remove("error");
+    detalles.hidden = true;
+    try {
+      estado.textContent = "Preparando la imagen…";
+      const { img, url } = await cargarImagen(archivo);
+      vista.src = url;
+      vista.hidden = false;
+      const canvas = prepararImagen(img);
+
+      estado.textContent = "Cargando el lector… (la primera vez tarda un poco)";
+      const texto = await leerTextoDeImagen(canvas, (p) => {
+        estado.textContent = "Leyendo… " + Math.round(p * 100) + "%";
+      });
+
+      pre.textContent = texto.trim() || "(no se ha leído nada)";
+      detalles.hidden = false;
+      const clase = leerClase(texto);
+      estado.textContent = rellenarClase(clase);
+    } catch (err) {
+      estado.classList.add("error");
+      estado.textContent = err.message || "No se ha podido leer la imagen.";
+    } finally {
+      boton.disabled = false;
+    }
+  });
+
+  tarjeta.append(boton, entrada, ayuda, vista, estado, detalles);
+  return tarjeta;
+}
+
+// Sustituye las tarjetas de la clase por lo leído. Devuelve un resumen.
+function rellenarClase(clase) {
+  for (const fila of filasHoja) fila.tarjeta.remove();
+  filasHoja = [];
+
+  for (const f of clase.fuerza) {
+    hojaBloques.appendChild(crearTarjetaEjercicio(null));
+    const fila = filasHoja[filasHoja.length - 1];
+    fila.select.value = f.ejercicio;
+    fila.select.dispatchEvent(new Event("change"));
+    fila.series.value = f.series;
+    fila.reps.value = f.reps;
+    if (f.kg) fila.kg.value = f.kg;
+    if (f.esfuerzo) fila.esfuerzo.value = String(f.esfuerzo);
+  }
+
+  if (clase.wod) {
+    hojaBloques.appendChild(crearTarjetaWodHoja(null));
+    const fila = filasHoja[filasHoja.length - 1];
+    fila.formatoSelect.value = clase.wod.formato;
+    fila.minutosInput.value = clase.wod.minutos || "";
+    fila.formatoSelect.dispatchEvent(new Event("change"));
+    fila.detalleInput.value = clase.wod.detalle || "";
+    fila.movs.push(...clase.wod.movimientos);
+    fila.pintarMovs();
+  }
+
+  const nada = clase.fuerza.length === 0 && !clase.wod;
+  if (nada) {
+    hojaBloques.appendChild(crearTarjetaEjercicio(null));
+    hojaBloques.appendChild(crearTarjetaWodHoja(null));
+    return "No he reconocido ejercicios. Prueba con una foto más recta y con buena luz, o apúntalo a mano.";
+  }
+
+  const partes = [];
+  if (clase.fuerza.length > 0) {
+    partes.push(clase.fuerza.length + (clase.fuerza.length === 1 ? " ejercicio" : " ejercicios"));
+  }
+  if (clase.wod) {
+    partes.push("un WOD con " + clase.wod.movimientos.length + " movimientos");
+  }
+  let texto = "✓ He encontrado " + partes.join(" y ") + ". Revisa y completa (kg, resultado…) antes de guardar.";
+  if (clase.noEntendidas.length > 0) {
+    texto += " No he entendido: «" + clase.noEntendidas.slice(0, 3).join("», «") + "»"
+      + (clase.noEntendidas.length > 3 ? "…" : "") + ".";
+  }
+  return texto;
 }
 
 function cerrarHoja() {
@@ -659,8 +925,7 @@ function enteroOCero(texto) {
 }
 
 // Convierte los campos del WOD en { resultado, tiempoSeg, rondas } o un texto de error.
-function leerResultadoWod(fila) {
-  const formato = fila.wod.formato;
+function leerResultadoWod(fila, formato, minutos) {
   if (formato === "AMRAP") {
     const rondas = enteroOCero(fila.rondas.value);
     const extra = enteroOCero(fila.extra.value);
@@ -674,8 +939,9 @@ function leerResultadoWod(fila) {
   }
   if (formato === "EMOM") {
     const hechos = enteroOCero(fila.completados.value);
-    if (hechos === null || hechos > fila.wod.minutos) return "Revisa los minutos completados del WOD.";
-    return { resultado: hechos + "/" + fila.wod.minutos + " min", tiempoSeg: null, rondas: null };
+    if (hechos === null || (minutos && hechos > minutos)) return "Revisa los minutos completados del WOD.";
+    if (hechos === 0) return { resultado: "", tiempoSeg: null, rondas: null };
+    return { resultado: hechos + (minutos ? "/" + minutos : "") + " min", tiempoSeg: null, rondas: null };
   }
   const min = enteroOCero(fila.min.value);
   const seg = enteroOCero(fila.seg.value);
@@ -701,39 +967,52 @@ function guardarDesdeHoja() {
 
   const bloques = [];
   for (const fila of filasHoja) {
-    if (!fila.hecho.checked) continue;
+    if (fila.hecho && !fila.hecho.checked) continue;
 
     if (fila.tipo === "fuerza") {
+      const ejercicio = fila.select ? fila.select.value : fila.ejercicio;
+      const nombre = nombreDe(ejercicio);
       const series = enteroPositivo(fila.series.value);
       const reps = enteroPositivo(fila.reps.value);
       if (series === null || reps === null) {
-        error("Revisa series y reps de " + fila.nombre + ".");
+        error("Revisa series y reps de " + nombre + ".");
         return;
       }
       const kg = leerKg(fila.kg.value);
       if (Number.isNaN(kg)) {
-        error("Los kg de " + fila.nombre + " no son un número válido.");
+        error("Los kg de " + nombre + " no son un número válido.");
         return;
       }
       bloques.push({
         tipo: "fuerza",
-        ejercicio: fila.ejercicio,
+        ejercicio: ejercicio,
         series: series,
         reps: reps,
         kg: kg,
         esfuerzo: esfuerzoDe(fila.esfuerzo),
       });
     } else {
-      const r = leerResultadoWod(fila);
+      const formato = fila.wod ? fila.wod.formato : fila.formatoSelect.value;
+      const minutos = fila.wod ? fila.wod.minutos : enteroPositivo(fila.minutosInput.value);
+      const movimientos = (fila.wod ? fila.wod.movimientos : fila.movs)
+        .map(m => ({ ejercicio: m.ejercicio, reps: m.reps }));
+      if (movimientos.length === 0) {
+        error("Añade al menos un movimiento al WOD (o quítalo).");
+        return;
+      }
+      const detalle = fila.wod
+        ? fila.wod.detalle
+        : (fila.detalleInput.value.trim() || (minutos ? minutos + " min" : ""));
+      const r = leerResultadoWod(fila, formato, minutos);
       if (typeof r === "string") {
         error(r);
         return;
       }
       bloques.push({
         tipo: "wod",
-        formato: fila.wod.formato,
-        detalle: fila.wod.detalle,
-        movimientos: fila.wod.movimientos.map(m => ({ ejercicio: m.ejercicio, reps: m.reps })),
+        formato: formato,
+        detalle: detalle,
+        movimientos: movimientos,
         resultado: r.resultado,
         tiempoSeg: r.tiempoSeg,
         rondas: r.rondas,
@@ -743,11 +1022,19 @@ function guardarDesdeHoja() {
   }
 
   if (bloques.length === 0) {
-    error("Marca al menos un ejercicio como hecho.");
+    error(modoHoja === "clase"
+      ? "Añade al menos un ejercicio o un WOD."
+      : "Marca al menos un ejercicio como hecho.");
     return;
   }
 
-  entrenos.push({ id: Date.now(), fecha: hojaFecha.value, tipo: hojaTipo.value, bloques: bloques });
+  entrenos.push({
+    id: Date.now(),
+    fecha: hojaFecha.value,
+    tipo: hojaTipo.value,
+    origen: modoHoja === "clase" ? "clase" : (propuesta && propuesta.sesion ? "plan" : "libre"),
+    bloques: bloques,
+  });
   if (!guardarEntrenos()) {
     entrenos.pop();
     error("No se ha podido guardar en este navegador.");
@@ -759,11 +1046,17 @@ function guardarDesdeHoja() {
   mostrarPropuesta();
   mostrarHistorial();
   mostrarPantalla("cuerpo");
-  mostrarToast("¡Entreno guardado! Así queda tu carga 💪");
+  mostrarToast(modoHoja === "clase" ? "¡Clase guardada! Así queda tu carga 💪" : "¡Entreno guardado! Así queda tu carga 💪");
 }
 
 document.getElementById("hoja-cancelar").addEventListener("click", cerrarHoja);
 document.getElementById("hoja-guardar-btn").addEventListener("click", guardarDesdeHoja);
+document.getElementById("hoja-mas-ejercicio").addEventListener("click", () => {
+  hojaBloques.appendChild(crearTarjetaEjercicio(null));
+});
+document.getElementById("hoja-mas-wod").addEventListener("click", () => {
+  hojaBloques.appendChild(crearTarjetaWodHoja(null));
+});
 
 for (const boton of botonesFoco) {
   boton.addEventListener("click", () => {
@@ -782,10 +1075,237 @@ botonProponer.addEventListener("click", () => {
     mostrarPantalla("perfil");
     return;
   }
-  propuesta = proponerEntreno(datosMotor());
+  propuesta = proponerEntreno({ perfil: perfil, focos: focos, sesion: null, entrenos: entrenos, hoy: new Date() });
   mostrarPropuesta();
   contenedorPropuesta.scrollIntoView({ behavior: "smooth", block: "start" });
 });
+
+// --- Lo que toca hoy según el plan ---
+
+const hoyPlan = document.getElementById("hoy-plan");
+const otroEntreno = document.getElementById("otro-entreno");
+const botonOtro = document.getElementById("btn-otro");
+
+function entrenadoEn(fechaTexto) {
+  return entrenos.some(e => e.fecha === fechaTexto);
+}
+
+function fechaLarga(fecha) {
+  return fecha.toLocaleDateString("es-ES", { weekday: "long", day: "numeric" });
+}
+
+function crearBoton(texto, clase, accion) {
+  const boton = document.createElement("button");
+  boton.type = "button";
+  boton.className = clase;
+  boton.textContent = texto;
+  boton.addEventListener("click", accion);
+  return boton;
+}
+
+function empezarEntrenoPlan(sesion) {
+  propuesta = proponerEntreno({ perfil: perfil, focos: [], sesion: sesion, entrenos: entrenos, hoy: new Date() });
+  otroEntreno.hidden = true;
+  botonOtro.classList.remove("activo");
+  mostrarPropuesta();
+  contenedorPropuesta.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function pintarPlanHoy() {
+  hoyPlan.textContent = "";
+  const tarjeta = document.createElement("div");
+  tarjeta.className = "tarjeta plan-hoy";
+  const hoy = new Date();
+
+  if (!plan) {
+    tarjeta.append(
+      crearParrafo("Sin plan todavía", "sesion-nombre"),
+      crearParrafo("Elige qué quieres mejorar y qué días entrenas, y la app te monta un plan de 8 o 12 semanas.", "ayuda"),
+      crearBoton("Crear mi plan", "principal", () => mostrarPantalla("perfil"))
+    );
+    hoyPlan.appendChild(tarjeta);
+    return;
+  }
+
+  const sesion = sesionDelDia(plan, hoy);
+  if (sesion === null) {
+    const terminado = semanaDe(plan, hoy) >= plan.semanas;
+    tarjeta.append(
+      crearParrafo(terminado ? "¡Plan terminado!" : "Tu plan empieza pronto", "sesion-nombre"),
+      crearParrafo(terminado
+        ? "Enhorabuena. Crea uno nuevo en Perfil para seguir progresando."
+        : "Mientras tanto puedes hacer otro entreno o apuntar tu clase.", "ayuda"),
+      crearBoton("Crear un plan nuevo", "principal", () => mostrarPantalla("perfil"))
+    );
+    hoyPlan.appendChild(tarjeta);
+    return;
+  }
+
+  const fase = semanaPlan(plan.objetivo, sesion.semana).fase;
+  const etiqueta = document.createElement("span");
+  etiqueta.className = "etiqueta-semana";
+  etiqueta.textContent = "SEMANA " + (sesion.semana + 1) + " DE " + plan.semanas + " · " + fase.toUpperCase();
+  tarjeta.appendChild(etiqueta);
+
+  if (sesion.descanso) {
+    tarjeta.appendChild(crearParrafo("Descanso", "sesion-nombre"));
+    const proxima = proximaSesion(plan, hoy);
+    tarjeta.appendChild(crearParrafo(
+      proxima
+        ? "Próxima sesión: " + fechaLarga(proxima.fecha) + " · " + proxima.sesion.nombre
+        : "No quedan sesiones en el plan.",
+      "sesion-principal"
+    ));
+    tarjeta.appendChild(crearParrafo("Recuperar también es entrenar. Si te apetece, movilidad o un paseo.", "ayuda"));
+  } else {
+    tarjeta.appendChild(crearParrafo(sesion.nombre, "sesion-nombre"));
+    tarjeta.appendChild(crearParrafo(textoPrincipal(sesion), "sesion-principal"));
+    if (sesion.esquema.descarga) {
+      tarjeta.appendChild(crearParrafo("Semana de descarga: menos volumen para asimilar lo trabajado.", "ayuda"));
+    }
+    if (entrenadoEn(fechaISO(hoy))) {
+      tarjeta.appendChild(crearParrafo("✓ Ya has entrenado hoy", "hecho-hoy"));
+    }
+    tarjeta.appendChild(crearBoton("Empezar entreno del plan", "principal", () => empezarEntrenoPlan(sesion)));
+  }
+  hoyPlan.appendChild(tarjeta);
+}
+
+botonOtro.addEventListener("click", () => {
+  otroEntreno.hidden = !otroEntreno.hidden;
+  botonOtro.classList.toggle("activo", !otroEntreno.hidden);
+  if (!otroEntreno.hidden) {
+    otroEntreno.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+});
+
+document.getElementById("btn-clase").addEventListener("click", abrirHojaClase);
+
+// ---------- Pantalla "Plan" ----------
+
+const contenidoPlan = document.getElementById("plan-contenido");
+let semanaVista = 0;
+
+function pintarPlan() {
+  contenidoPlan.textContent = "";
+  const hoy = new Date();
+
+  if (!plan) {
+    const tarjeta = crearTarjeta("Aún no tienes plan");
+    tarjeta.append(
+      crearParrafo("Dile a la app qué quieres mejorar y qué días entrenas.", "ayuda"),
+      crearBoton("Crear mi plan", "principal", () => mostrarPantalla("perfil"))
+    );
+    contenidoPlan.appendChild(tarjeta);
+    return;
+  }
+
+  // Resumen
+  const actual = Math.min(Math.max(semanaDe(plan, hoy), 0), plan.semanas - 1);
+  const inicio = fechaDesdeISO(plan.inicio);
+  const fin = sumarDias(inicio, plan.semanas * 7 - 1);
+  const formato = { day: "numeric", month: "short" };
+  const resumen = crearTarjeta(OBJETIVOS[plan.objetivo].nombre);
+  resumen.appendChild(crearParrafo(
+    plan.semanas + " semanas · " + plan.dias.length + " días por semana · del "
+    + inicio.toLocaleDateString("es-ES", formato) + " al " + fin.toLocaleDateString("es-ES", formato),
+    "ayuda"
+  ));
+  const progreso = document.createElement("div");
+  progreso.className = "progreso";
+  const relleno = document.createElement("span");
+  relleno.style.width = Math.round((Math.max(0, semanaDe(plan, hoy)) / plan.semanas) * 100) + "%";
+  progreso.appendChild(relleno);
+  resumen.appendChild(progreso);
+  resumen.appendChild(crearParrafo(
+    "Cada 4 semanas hay una de descarga (menos volumen) para que el cuerpo asimile y siga progresando.",
+    "ayuda"
+  ));
+  contenidoPlan.appendChild(resumen);
+
+  // Semana
+  semanaVista = Math.min(Math.max(semanaVista, 0), plan.semanas - 1);
+  const datosSemana = semanaPlan(plan.objetivo, semanaVista);
+  const tarjeta = document.createElement("div");
+  tarjeta.className = "tarjeta";
+
+  const nav = document.createElement("div");
+  nav.className = "semana-nav";
+  const anterior = crearBoton("‹", "flecha", () => { semanaVista--; pintarPlan(); });
+  anterior.disabled = semanaVista === 0;
+  anterior.setAttribute("aria-label", "Semana anterior");
+  const siguiente = crearBoton("›", "flecha", () => { semanaVista++; pintarPlan(); });
+  siguiente.disabled = semanaVista === plan.semanas - 1;
+  siguiente.setAttribute("aria-label", "Semana siguiente");
+  const titulo = document.createElement("h2");
+  titulo.textContent = "Semana " + (semanaVista + 1) + (semanaVista === actual ? " (esta)" : "");
+  const sub = document.createElement("small");
+  sub.textContent = datosSemana.fase + " · principal " + datosSemana.series + "×" + datosSemana.reps
+    + " al ≈" + datosSemana.esfuerzo + "%";
+  titulo.appendChild(sub);
+  nav.append(anterior, titulo, siguiente);
+  tarjeta.appendChild(nav);
+
+  const lista = document.createElement("ul");
+  const lunes = sumarDias(inicio, semanaVista * 7);
+  const hoyTexto = fechaISO(hoy);
+  for (let d = 0; d < 7; d++) {
+    const fecha = sumarDias(lunes, d);
+    const texto = fechaISO(fecha);
+    const sesion = sesionDelDia(plan, fecha);
+    const hecho = entrenadoEn(texto);
+
+    const li = document.createElement("li");
+    li.className = "dia-plan" + (texto === hoyTexto ? " es-hoy" : "") + (sesion.descanso ? " descanso" : "");
+
+    const fechaCaja = document.createElement("div");
+    fechaCaja.className = "dia-fecha";
+    const corto = document.createElement("strong");
+    corto.textContent = DIAS_CORTOS[d];
+    const numero = document.createElement("span");
+    numero.textContent = fecha.getDate();
+    fechaCaja.append(corto, numero);
+
+    const info = document.createElement("div");
+    info.className = "info";
+    const nombre = document.createElement("span");
+    nombre.className = "nombre";
+    nombre.textContent = sesion.descanso ? "Descanso" : sesion.nombre;
+    info.appendChild(nombre);
+    if (!sesion.descanso) {
+      const detalle = document.createElement("small");
+      detalle.textContent = textoPrincipal(sesion);
+      info.appendChild(detalle);
+    }
+
+    const estado = document.createElement("span");
+    estado.className = "estado-dia";
+    if (hecho) {
+      estado.classList.add("hecho");
+      estado.textContent = "✓ Hecho";
+    } else if (texto === hoyTexto && !sesion.descanso) {
+      estado.classList.add("hoy");
+      estado.textContent = "Hoy";
+    } else if (texto < hoyTexto && !sesion.descanso) {
+      estado.classList.add("fallado");
+      estado.textContent = "No hecho";
+    } else if (!sesion.descanso) {
+      estado.textContent = "Pendiente";
+    }
+
+    li.append(fechaCaja, info);
+    if (estado.textContent) li.appendChild(estado);
+    if (texto === hoyTexto) {
+      li.style.cursor = "pointer";
+      li.addEventListener("click", () => mostrarPantalla("hoy"));
+    }
+    lista.appendChild(li);
+  }
+  tarjeta.appendChild(lista);
+  contenidoPlan.appendChild(tarjeta);
+
+  contenidoPlan.appendChild(crearBoton("Cambiar objetivo o días", "secundario", () => mostrarPantalla("perfil")));
+}
 
 document.getElementById("resumen-cuerpo").addEventListener("click", () => mostrarPantalla("cuerpo"));
 
@@ -1258,6 +1778,7 @@ const formPerfil = document.getElementById("form-perfil");
 const contObjetivos = document.getElementById("perfil-objetivos");
 const bienvenidaPerfil = document.getElementById("perfil-bienvenida");
 const mensajePerfil = document.getElementById("mensaje-perfil");
+const contDias = document.getElementById("perfil-dias");
 
 function pintarPerfil() {
   contObjetivos.textContent = "";
@@ -1286,11 +1807,42 @@ function pintarPerfil() {
     contObjetivos.appendChild(label);
   }
 
+  // Días de entreno (por defecto lunes, miércoles y viernes)
+  const dias = perfil && Array.isArray(perfil.dias) ? perfil.dias : [0, 2, 4];
+  contDias.textContent = "";
+  DIAS_CORTOS.forEach((corto, d) => {
+    const label = document.createElement("label");
+    label.className = "dia";
+    label.title = DIAS_SEMANA[d];
+    const casilla = document.createElement("input");
+    casilla.type = "checkbox";
+    casilla.name = "dias";
+    casilla.value = String(d);
+    casilla.checked = dias.includes(d);
+    casilla.setAttribute("aria-label", DIAS_SEMANA[d]);
+    label.append(casilla, corto);
+    contDias.appendChild(label);
+  });
+
+  const semanas = perfil && perfil.semanas ? perfil.semanas : 8;
+  for (const radio of formPerfil.querySelectorAll('input[name="semanas"]')) {
+    radio.checked = Number(radio.value) === semanas;
+  }
+
   for (const casilla of formPerfil.querySelectorAll('input[name="cuidar"]')) {
     casilla.checked = perfil ? perfil.cuidar.includes(casilla.value) : false;
   }
   bienvenidaPerfil.hidden = perfil !== null;
   mensajePerfil.textContent = "";
+  mensajePerfil.classList.remove("error");
+}
+
+function mismosDatosDePlan(a, b) {
+  return a && b
+    && a.objetivo === b.objetivo
+    && a.semanas === b.semanas
+    && JSON.stringify(a.dias) === JSON.stringify(b.dias)
+    && JSON.stringify([...a.cuidar].sort()) === JSON.stringify([...b.cuidar].sort());
 }
 
 formPerfil.addEventListener("submit", (evento) => {
@@ -1298,20 +1850,43 @@ formPerfil.addEventListener("submit", (evento) => {
 
   const elegido = formPerfil.querySelector('input[name="objetivo"]:checked');
   const cuidar = [...formPerfil.querySelectorAll('input[name="cuidar"]:checked')].map(c => c.value);
-  const primeraVez = perfil === null;
+  const dias = [...formPerfil.querySelectorAll('input[name="dias"]:checked')].map(c => Number(c.value));
+  const semanas = Number(formPerfil.querySelector('input[name="semanas"]:checked').value);
 
-  perfil = { version: 1, objetivo: elegido.value, cuidar: cuidar };
+  if (dias.length < 2 || dias.length > 6) {
+    mensajePerfil.textContent = "Elige entre 2 y 6 días de entreno.";
+    mensajePerfil.classList.add("error");
+    return;
+  }
+
+  const nuevo = { version: 1, objetivo: elegido.value, cuidar: cuidar, dias: dias, semanas: semanas };
+
+  // Si cambia algo que afecta al plan y ya había uno, se confirma antes de rehacerlo.
+  const hayQueRehacer = !plan || !mismosDatosDePlan(perfil, nuevo);
+  if (plan && hayQueRehacer
+      && !confirm("Se creará un plan nuevo empezando esta semana. Tu historial no se borra. ¿Seguir?")) {
+    return;
+  }
+
+  perfil = nuevo;
   if (!guardarPerfil()) {
     mensajePerfil.textContent = "No se ha podido guardar en este navegador.";
+    mensajePerfil.classList.add("error");
     return;
   }
 
   propuesta = null;
   mostrarPropuesta();
-  if (primeraVez) {
-    mostrarPantalla("hoy");
+
+  if (hayQueRehacer) {
+    plan = crearPlan(perfil, new Date());
+    guardarPlan();
+    semanaVista = 0;
+    mostrarPantalla("plan");
+    mostrarToast("¡Plan de " + semanas + " semanas creado! 🗓️");
   } else {
-    mensajePerfil.textContent = "Perfil guardado.";
+    mensajePerfil.classList.remove("error");
+    mensajePerfil.textContent = "Perfil guardado. Tu plan sigue igual.";
   }
 });
 
@@ -1319,6 +1894,7 @@ formPerfil.addEventListener("submit", (evento) => {
 
 const pantallas = {
   hoy: document.getElementById("pantalla-hoy"),
+  plan: document.getElementById("pantalla-plan"),
   cuerpo: document.getElementById("pantalla-cuerpo"),
   registro: document.getElementById("pantalla-registro"),
   biblioteca: document.getElementById("pantalla-biblioteca"),
@@ -1335,7 +1911,14 @@ function mostrarPantalla(nombre) {
   }
   if (nombre === "hoy") {
     pintarSaludo();
+    pintarPlanHoy();
     pintarCargaHoy();
+  }
+  if (nombre === "plan") {
+    if (plan) {
+      semanaVista = Math.max(0, semanaDe(plan, new Date()));
+    }
+    pintarPlan();
   }
   if (nombre === "cuerpo") {
     mostrarCuerpo();
