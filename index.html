@@ -104,6 +104,8 @@
               <ellipse data-musculo="gluteos" cx="114" cy="214" rx="17" ry="16"/>
               <ellipse data-musculo="isquios" cx="84" cy="266" rx="15" ry="36"/>
               <ellipse data-musculo="isquios" cx="116" cy="266" rx="15" ry="36"/>
+              <ellipse data-musculo="gemelos" cx="83" cy="325" rx="12" ry="24"/>
+              <ellipse data-musculo="gemelos" cx="117" cy="325" rx="12" ry="24"/>
             </g>
             <path class="detalle" d="M100 76 V150"/>
           </svg>
@@ -157,6 +159,11 @@
           </label>
           <label>Reps
             <input type="number" id="fuerza-reps" min="1" inputmode="numeric">
+          </label>
+        </div>
+        <div class="fila">
+          <label>Kg
+            <input type="text" id="fuerza-kg" inputmode="decimal" placeholder="opcional">
           </label>
           <label>Esfuerzo
             <select id="fuerza-esfuerzo"></select>
@@ -279,6 +286,35 @@
     <span>Perfil</span>
   </button>
 </nav>
+
+<!-- ===== HOJA "¿CÓMO HA IDO?" (al registrar la propuesta de Hoy) ===== -->
+<div id="hoja-guardar" class="hoja" role="dialog" aria-modal="true" aria-labelledby="hoja-titulo" hidden>
+  <div class="hoja-cabecera">
+    <button type="button" id="hoja-cancelar" class="mini">Cancelar</button>
+    <h2 id="hoja-titulo">¿Cómo ha ido?</h2>
+    <span></span>
+  </div>
+  <div class="hoja-cuerpo">
+    <div class="fila">
+      <label>Fecha
+        <input type="date" id="hoja-fecha">
+      </label>
+      <label>Tipo
+        <select id="hoja-tipo">
+          <option value="propio">Mi entreno</option>
+          <option value="clase">Clase</option>
+        </select>
+      </label>
+    </div>
+    <div id="hoja-bloques"></div>
+  </div>
+  <div class="hoja-pie">
+    <p id="hoja-mensaje" class="mensaje error" role="status"></p>
+    <button type="button" id="hoja-guardar-btn" class="principal">Guardar entreno</button>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status" hidden></div>
 
 <script src="ejercicios.js"></script>
 <script src="motor.js"></script>

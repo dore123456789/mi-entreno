@@ -240,109 +240,530 @@ function crearFilaPropuesta(numero, ejercicio, titulo, esquema, detalle, alCambi
   return li;
 }
 
+// Cabecera de tarjeta con título y etiqueta de color (ej. "WOD  AMRAP").
+function crearCabecera(titulo, etiqueta, claseEtiqueta) {
+  const cabecera = document.createElement("div");
+  cabecera.className = "wod-cabecera";
+  const h2 = document.createElement("h2");
+  h2.textContent = titulo;
+  cabecera.appendChild(h2);
+  if (etiqueta) {
+    const span = document.createElement("span");
+    span.className = "formato " + (claseEtiqueta || "");
+    span.textContent = etiqueta;
+    cabecera.appendChild(span);
+  }
+  return cabecera;
+}
+
+// Fila sin botones (calentamiento y movilidad).
+function crearFilaSimple(numero, titulo, pill, detalle) {
+  const li = document.createElement("li");
+  li.className = "fila-ejercicio";
+  const num = document.createElement("span");
+  num.className = "num";
+  num.textContent = numero;
+  li.appendChild(num);
+
+  const info = document.createElement("div");
+  info.className = "info";
+  const nombre = document.createElement("span");
+  nombre.className = "nombre";
+  nombre.textContent = titulo;
+  info.appendChild(nombre);
+  if (pill) {
+    const p = document.createElement("span");
+    p.className = "pill";
+    p.textContent = pill;
+    info.appendChild(p);
+  }
+  const pequeno = document.createElement("small");
+  pequeno.textContent = detalle;
+  info.appendChild(pequeno);
+  li.appendChild(info);
+  return li;
+}
+
+function zonasTexto(drill) {
+  return "prepara " + drill.zonas.map(z => MUSCULOS[z]).join(", ");
+}
+
+function pintarDescanso() {
+  const tarjeta = document.createElement("div");
+  tarjeta.className = "tarjeta";
+  tarjeta.appendChild(crearCabecera("Hoy toca descanso", "MOVILIDAD", "suave"));
+  tarjeta.appendChild(crearParrafo(
+    "Tus músculos están muy cargados. En vez de entrenar, haz esta sesión suave "
+    + "(2 rondas) o sal a dar un paseo.",
+    "ayuda"
+  ));
+  const ul = document.createElement("ul");
+  propuesta.movilidad.forEach((d, i) => {
+    ul.appendChild(crearFilaSimple(i + 1, d.nombre, d.dosis, zonasTexto(d)));
+  });
+  tarjeta.appendChild(ul);
+  contenedorPropuesta.appendChild(tarjeta);
+}
+
+function pintarAvisos() {
+  if (propuesta.avisos.length === 0) {
+    return;
+  }
+  const tarjeta = document.createElement("div");
+  tarjeta.className = "tarjeta aviso";
+  const h2 = document.createElement("h2");
+  h2.textContent = "Ojo con la carga";
+  tarjeta.appendChild(h2);
+  for (const texto of propuesta.avisos) {
+    tarjeta.appendChild(crearParrafo(texto, "aviso-texto"));
+  }
+  contenedorPropuesta.appendChild(tarjeta);
+}
+
+function pintarCalentamiento() {
+  const c = propuesta.calentamiento;
+  const tarjeta = document.createElement("div");
+  tarjeta.className = "tarjeta";
+  tarjeta.appendChild(crearCabecera("Calentamiento", "≈ 10 MIN", "suave"));
+  tarjeta.appendChild(crearParrafo("Movilidad pensada para lo que vas a entrenar hoy.", "ayuda"));
+
+  const ul = document.createElement("ul");
+  let n = 1;
+  if (c.cardio) {
+    ul.appendChild(crearFilaSimple(n++, nombreDe(c.cardio) + " suave", "5 min", "subir pulsaciones"));
+  }
+  for (const d of c.movilidad) {
+    ul.appendChild(crearFilaSimple(n++, d.nombre, d.dosis, zonasTexto(d)));
+  }
+  tarjeta.appendChild(ul);
+
+  if (c.aproximacion) {
+    tarjeta.appendChild(crearParrafo(
+      "Antes de " + nombreDe(c.aproximacion) + ": 2-3 series de aproximación subiendo poco a poco el peso.",
+      "ayuda"
+    ));
+  }
+  contenedorPropuesta.appendChild(tarjeta);
+}
+
+function pintarFuerza() {
+  if (propuesta.fuerza.length === 0) {
+    return;
+  }
+  const tarjeta = crearTarjeta("Fuerza");
+  const ul = document.createElement("ul");
+  propuesta.fuerza.forEach((f, i) => {
+    const e = porId[f.ejercicio];
+    ul.appendChild(crearFilaPropuesta(
+      i + 1,
+      e,
+      e.nombre,
+      f.series + "×" + f.reps,
+      textoMusculos(e),
+      () => sustituirEnPropuesta(propuesta, datosMotor(), "fuerza", i)
+    ));
+  });
+  tarjeta.appendChild(ul);
+  if (propuesta.fuerza.length < HUECOS_FUERZA.length) {
+    tarjeta.appendChild(crearParrafo("Bloque más corto: hay músculos que necesitan descanso.", "ayuda"));
+  }
+  contenedorPropuesta.appendChild(tarjeta);
+}
+
+function pintarLigero() {
+  if (propuesta.ligero.length === 0) {
+    return;
+  }
+  const tarjeta = document.createElement("div");
+  tarjeta.className = "tarjeta";
+  tarjeta.appendChild(crearCabecera("Bloque ligero", "SUAVE", "suave"));
+  tarjeta.appendChild(crearParrafo("Músculos pequeños, peso bajo y sin llegar al fallo.", "ayuda"));
+  const ul = document.createElement("ul");
+  propuesta.ligero.forEach((l, i) => {
+    const e = porId[l.ejercicio];
+    ul.appendChild(crearFilaPropuesta(
+      i + 1,
+      e,
+      e.nombre,
+      l.series + "×" + l.reps,
+      textoMusculos(e),
+      () => sustituirEnPropuesta(propuesta, datosMotor(), "ligero", i)
+    ));
+  });
+  tarjeta.appendChild(ul);
+  contenedorPropuesta.appendChild(tarjeta);
+}
+
+function pintarWod() {
+  if (!propuesta.wod) {
+    return;
+  }
+  const tarjeta = document.createElement("div");
+  tarjeta.className = "tarjeta wod";
+  tarjeta.appendChild(crearCabecera("WOD", propuesta.wod.formato.toUpperCase()));
+  tarjeta.appendChild(crearParrafo(propuesta.wod.detalle, "ayuda"));
+
+  const ul = document.createElement("ul");
+  propuesta.wod.movimientos.forEach((mov, i) => {
+    const e = porId[mov.ejercicio];
+    ul.appendChild(crearFilaPropuesta(
+      i + 1,
+      e,
+      textoMovimiento(mov),
+      null,
+      textoMusculos(e),
+      () => sustituirEnPropuesta(propuesta, datosMotor(), "wod", i)
+    ));
+  });
+  tarjeta.appendChild(ul);
+  contenedorPropuesta.appendChild(tarjeta);
+}
+
 function mostrarPropuesta() {
   contenedorPropuesta.textContent = "";
   if (!propuesta) {
     return;
   }
 
-  if (propuesta.fuerza.length === 0 && !propuesta.wod) {
-    const tarjeta = crearTarjeta("Hoy toca descanso");
-    tarjeta.appendChild(crearParrafo(
-      "Tus músculos están muy cargados. Mejor movilidad, estiramientos o un paseo suave.",
-      "ayuda"
-    ));
-    contenedorPropuesta.appendChild(tarjeta);
+  if (propuesta.movilidad) {
+    pintarDescanso();
     return;
   }
 
-  if (propuesta.fuerza.length > 0) {
-    const tarjeta = crearTarjeta("Fuerza");
-    const ul = document.createElement("ul");
-    propuesta.fuerza.forEach((f, i) => {
-      const e = porId[f.ejercicio];
-      ul.appendChild(crearFilaPropuesta(
-        i + 1,
-        e,
-        e.nombre,
-        f.series + "×" + f.reps,
-        textoMusculos(e),
-        () => sustituirEnPropuesta(propuesta, datosMotor(), "fuerza", i)
-      ));
-    });
-    tarjeta.appendChild(ul);
-    if (propuesta.fuerza.length < HUECOS_FUERZA.length) {
-      tarjeta.appendChild(crearParrafo("Bloque más corto: hay músculos que necesitan descanso.", "ayuda"));
-    }
-    contenedorPropuesta.appendChild(tarjeta);
-  }
-
-  if (propuesta.wod) {
-    const tarjeta = document.createElement("div");
-    tarjeta.className = "tarjeta wod";
-    const cabecera = document.createElement("div");
-    cabecera.className = "wod-cabecera";
-    const h2 = document.createElement("h2");
-    h2.textContent = "WOD";
-    const formato = document.createElement("span");
-    formato.className = "formato";
-    formato.textContent = propuesta.wod.formato.toUpperCase();
-    cabecera.appendChild(h2);
-    cabecera.appendChild(formato);
-    tarjeta.appendChild(cabecera);
-    tarjeta.appendChild(crearParrafo(propuesta.wod.detalle, "ayuda"));
-
-    const ul = document.createElement("ul");
-    propuesta.wod.movimientos.forEach((mov, i) => {
-      const e = porId[mov.ejercicio];
-      ul.appendChild(crearFilaPropuesta(
-        i + 1,
-        e,
-        textoMovimiento(mov),
-        null,
-        textoMusculos(e),
-        () => sustituirEnPropuesta(propuesta, datosMotor(), "wod", i)
-      ));
-    });
-    tarjeta.appendChild(ul);
-    contenedorPropuesta.appendChild(tarjeta);
-  }
+  pintarAvisos();
+  pintarCalentamiento();
+  pintarFuerza();
+  pintarLigero();
+  pintarWod();
 
   const botonRegistrar = document.createElement("button");
   botonRegistrar.className = "principal";
   botonRegistrar.textContent = "Registrar este entreno";
-  botonRegistrar.addEventListener("click", cargarEnRegistro);
+  botonRegistrar.addEventListener("click", abrirHoja);
   contenedorPropuesta.appendChild(botonRegistrar);
 }
 
-// Pasa la propuesta al Registro: la fuerza va al borrador y el WOD queda
-// preparado en su formulario para que solo falte poner el resultado.
-function cargarEnRegistro() {
-  for (const f of propuesta.fuerza) {
-    borrador.push({
-      tipo: "fuerza",
-      ejercicio: f.ejercicio,
-      series: f.series,
-      reps: f.reps,
-      esfuerzo: null,
-    });
-  }
-  guardarBorrador();
+// ---------- Hoja "¿Cómo ha ido?" ----------
+// Al registrar la propuesta de Hoy se pregunta lo que de verdad se ha hecho:
+// series, reps, kg y esfuerzo de cada ejercicio, y el resultado del WOD.
+// El calentamiento no se registra: no cuenta como carga.
 
-  if (propuesta.wod) {
-    wodFormato.value = propuesta.wod.formato;
-    wodDetalle.value = propuesta.wod.detalle;
-    wodMovs = propuesta.wod.movimientos.map(m => ({ ejercicio: m.ejercicio, reps: m.reps }));
-  }
+const hoja = document.getElementById("hoja-guardar");
+const hojaFecha = document.getElementById("hoja-fecha");
+const hojaTipo = document.getElementById("hoja-tipo");
+const hojaBloques = document.getElementById("hoja-bloques");
+const hojaMensaje = document.getElementById("hoja-mensaje");
+const toast = document.getElementById("toast");
 
-  regFecha.value = fechaISO(new Date());
-  mostrarPantalla("registro");
-  mostrarBorrador();
-  mostrarWodMovs();
-  mensajeReg(propuesta.wod
-    ? "Fuerza añadida. Cuando acabes, pon el resultado del WOD y pulsa “Añadir WOD al entreno”."
-    : "Fuerza añadida. Ajusta lo que hayas cambiado y guarda el entreno.");
+// Lo que se ha pintado en la hoja, para leerlo al guardar.
+let filasHoja = [];
+
+function crearCampo(etiqueta, control) {
+  const label = document.createElement("label");
+  label.append(etiqueta, control);
+  return label;
 }
+
+function crearNumero(valor, placeholder, decimal) {
+  const input = document.createElement("input");
+  input.type = decimal ? "text" : "number";
+  input.inputMode = decimal ? "decimal" : "numeric";
+  if (!decimal) input.min = "0";
+  input.value = valor === null || valor === undefined ? "" : String(valor);
+  input.placeholder = placeholder || "";
+  return input;
+}
+
+function crearSelectEsfuerzo() {
+  const select = document.createElement("select");
+  rellenarSelectEsfuerzo(select);
+  return select;
+}
+
+function crearFila(...campos) {
+  const fila = document.createElement("div");
+  fila.className = "fila";
+  fila.append(...campos);
+  return fila;
+}
+
+// Interruptor "Hecho": al apagarlo, la tarjeta se atenúa y no se guarda.
+function crearInterruptorHecho(tarjeta) {
+  const label = document.createElement("label");
+  label.className = "hecho";
+  const casilla = document.createElement("input");
+  casilla.type = "checkbox";
+  casilla.checked = true;
+  casilla.setAttribute("aria-label", "Hecho");
+  casilla.addEventListener("change", () => {
+    tarjeta.classList.toggle("saltado", !casilla.checked);
+    for (const control of tarjeta.querySelectorAll("input:not([type=checkbox]), select")) {
+      control.disabled = !casilla.checked;
+    }
+  });
+  label.append("Hecho", casilla);
+  return { label, casilla };
+}
+
+// Último registro de un ejercicio de fuerza (el más reciente), o null.
+function ultimaVez(idEjercicio) {
+  let mejor = null;
+  for (const entreno of entrenos) {
+    for (const b of entreno.bloques) {
+      if (b.tipo !== "fuerza" || b.ejercicio !== idEjercicio) continue;
+      const masReciente = !mejor || entreno.fecha > mejor.fecha
+        || (entreno.fecha === mejor.fecha && entreno.id > mejor.idEntreno);
+      if (masReciente) {
+        mejor = { fecha: entreno.fecha, idEntreno: entreno.id, bloque: b };
+      }
+    }
+  }
+  return mejor ? mejor.bloque : null;
+}
+
+function textoUltimaVez(b) {
+  if (!b) {
+    return "Primera vez que lo registras.";
+  }
+  return "La última vez: " + b.series + "×" + b.reps
+    + (b.kg ? " · " + b.kg + " kg" : "")
+    + (b.esfuerzo ? " · " + b.esfuerzo + "%" : "");
+}
+
+function crearTarjetaEjercicio(item, etiqueta) {
+  const e = porId[item.ejercicio];
+  const tarjeta = document.createElement("div");
+  tarjeta.className = "tarjeta tarjeta-reg";
+
+  const cabecera = document.createElement("div");
+  cabecera.className = "reg-cabecera";
+  const titulo = document.createElement("div");
+  const nombre = document.createElement("span");
+  nombre.className = "nombre";
+  nombre.textContent = e.nombre + " ";
+  const pill = document.createElement("span");
+  pill.className = "pill";
+  pill.textContent = etiqueta;
+  titulo.append(nombre, pill);
+  const hecho = crearInterruptorHecho(tarjeta);
+  cabecera.append(titulo, hecho.label);
+  tarjeta.appendChild(cabecera);
+
+  const anterior = ultimaVez(e.id);
+  tarjeta.appendChild(crearParrafo(textoUltimaVez(anterior), "ayuda"));
+
+  const series = crearNumero(item.series);
+  const reps = crearNumero(item.reps);
+  // Kg: se rellena con lo de la última vez para ir rápido; se cambia si has subido.
+  const kg = crearNumero(anterior && anterior.kg ? anterior.kg : "", "—", true);
+  const esfuerzo = crearSelectEsfuerzo();
+
+  tarjeta.appendChild(crearFila(crearCampo("Series", series), crearCampo("Reps", reps), crearCampo("Kg", kg)));
+  tarjeta.appendChild(crearCampo("Esfuerzo", esfuerzo));
+
+  filasHoja.push({ tipo: "fuerza", ejercicio: e.id, nombre: e.nombre, hecho: hecho.casilla, series, reps, kg, esfuerzo });
+  return tarjeta;
+}
+
+function crearTarjetaWodHoja(wod) {
+  const tarjeta = document.createElement("div");
+  tarjeta.className = "tarjeta tarjeta-reg wod";
+
+  const cabecera = document.createElement("div");
+  cabecera.className = "reg-cabecera";
+  const titulo = crearCabecera("WOD", wod.formato.toUpperCase());
+  const hecho = crearInterruptorHecho(tarjeta);
+  cabecera.append(titulo, hecho.label);
+  tarjeta.appendChild(cabecera);
+
+  tarjeta.appendChild(crearParrafo(wod.detalle, "ayuda"));
+  tarjeta.appendChild(crearParrafo(wod.movimientos.map(textoMovimiento).join(" · "), "movs-wod"));
+
+  const fila = { tipo: "wod", wod: wod, hecho: hecho.casilla };
+
+  if (wod.formato === "AMRAP") {
+    fila.rondas = crearNumero("", "0");
+    fila.extra = crearNumero("", "0");
+    tarjeta.appendChild(crearFila(crearCampo("Rondas", fila.rondas), crearCampo("Reps de más", fila.extra)));
+  } else if (wod.formato === "EMOM") {
+    fila.completados = crearNumero(wod.minutos, "");
+    tarjeta.appendChild(crearCampo("Minutos completados (de " + wod.minutos + ")", fila.completados));
+  } else {
+    fila.min = crearNumero("", "min");
+    fila.seg = crearNumero("", "seg");
+    const dosPuntos = document.createElement("span");
+    dosPuntos.className = "separador-tiempo";
+    dosPuntos.textContent = ":";
+    tarjeta.appendChild(crearFila(crearCampo("Tiempo (min)", fila.min), dosPuntos, crearCampo("seg", fila.seg)));
+  }
+
+  fila.esfuerzo = crearSelectEsfuerzo();
+  tarjeta.appendChild(crearCampo("Esfuerzo", fila.esfuerzo));
+
+  filasHoja.push(fila);
+  return tarjeta;
+}
+
+function abrirHoja() {
+  filasHoja = [];
+  hojaBloques.textContent = "";
+  hojaMensaje.textContent = "";
+  hojaFecha.value = fechaISO(new Date());
+  hojaTipo.value = "propio";
+
+  if (propuesta.fuerza.length > 0) {
+    const h3 = document.createElement("h3");
+    h3.textContent = "Fuerza";
+    hojaBloques.appendChild(h3);
+    for (const f of propuesta.fuerza) {
+      hojaBloques.appendChild(crearTarjetaEjercicio(f, f.series + "×" + f.reps));
+    }
+  }
+  if (propuesta.ligero.length > 0) {
+    const h3 = document.createElement("h3");
+    h3.textContent = "Bloque ligero";
+    hojaBloques.appendChild(h3);
+    for (const l of propuesta.ligero) {
+      hojaBloques.appendChild(crearTarjetaEjercicio(l, "ligero"));
+    }
+  }
+  if (propuesta.wod) {
+    const h3 = document.createElement("h3");
+    h3.textContent = "WOD";
+    hojaBloques.appendChild(h3);
+    hojaBloques.appendChild(crearTarjetaWodHoja(propuesta.wod));
+  }
+
+  hoja.hidden = false;
+  document.body.style.overflow = "hidden";
+  hoja.querySelector(".hoja-cuerpo").scrollTop = 0;
+}
+
+function cerrarHoja() {
+  hoja.hidden = true;
+  document.body.style.overflow = "";
+}
+
+// "" → null (no puesto), número válido → número, si no → NaN (error).
+function leerKg(texto) {
+  const limpio = texto.trim().replace(",", ".");
+  if (limpio === "") return null;
+  const n = Number(limpio);
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : NaN;
+}
+
+function enteroOCero(texto) {
+  if (texto.trim() === "") return 0;
+  const n = Number(texto);
+  return Number.isInteger(n) && n >= 0 ? n : null;
+}
+
+// Convierte los campos del WOD en { resultado, tiempoSeg, rondas } o un texto de error.
+function leerResultadoWod(fila) {
+  const formato = fila.wod.formato;
+  if (formato === "AMRAP") {
+    const rondas = enteroOCero(fila.rondas.value);
+    const extra = enteroOCero(fila.extra.value);
+    if (rondas === null || extra === null) return "Revisa las rondas del WOD.";
+    if (rondas === 0 && extra === 0) return { resultado: "", tiempoSeg: null, rondas: null };
+    return {
+      resultado: rondas + " rondas" + (extra > 0 ? " + " + extra + " reps" : ""),
+      tiempoSeg: null,
+      rondas: rondas,
+    };
+  }
+  if (formato === "EMOM") {
+    const hechos = enteroOCero(fila.completados.value);
+    if (hechos === null || hechos > fila.wod.minutos) return "Revisa los minutos completados del WOD.";
+    return { resultado: hechos + "/" + fila.wod.minutos + " min", tiempoSeg: null, rondas: null };
+  }
+  const min = enteroOCero(fila.min.value);
+  const seg = enteroOCero(fila.seg.value);
+  if (min === null || seg === null || seg > 59) return "Revisa el tiempo del WOD (segundos de 0 a 59).";
+  if (min === 0 && seg === 0) return { resultado: "", tiempoSeg: null, rondas: null };
+  return { resultado: min + ":" + dosCifras(seg), tiempoSeg: min * 60 + seg, rondas: null };
+}
+
+function mostrarToast(texto) {
+  toast.textContent = texto;
+  toast.hidden = false;
+  clearTimeout(mostrarToast.temporizador);
+  mostrarToast.temporizador = setTimeout(() => { toast.hidden = true; }, 2500);
+}
+
+function guardarDesdeHoja() {
+  const error = (texto) => { hojaMensaje.textContent = texto; };
+
+  if (!hojaFecha.value) {
+    error("Elige la fecha.");
+    return;
+  }
+
+  const bloques = [];
+  for (const fila of filasHoja) {
+    if (!fila.hecho.checked) continue;
+
+    if (fila.tipo === "fuerza") {
+      const series = enteroPositivo(fila.series.value);
+      const reps = enteroPositivo(fila.reps.value);
+      if (series === null || reps === null) {
+        error("Revisa series y reps de " + fila.nombre + ".");
+        return;
+      }
+      const kg = leerKg(fila.kg.value);
+      if (Number.isNaN(kg)) {
+        error("Los kg de " + fila.nombre + " no son un número válido.");
+        return;
+      }
+      bloques.push({
+        tipo: "fuerza",
+        ejercicio: fila.ejercicio,
+        series: series,
+        reps: reps,
+        kg: kg,
+        esfuerzo: esfuerzoDe(fila.esfuerzo),
+      });
+    } else {
+      const r = leerResultadoWod(fila);
+      if (typeof r === "string") {
+        error(r);
+        return;
+      }
+      bloques.push({
+        tipo: "wod",
+        formato: fila.wod.formato,
+        detalle: fila.wod.detalle,
+        movimientos: fila.wod.movimientos.map(m => ({ ejercicio: m.ejercicio, reps: m.reps })),
+        resultado: r.resultado,
+        tiempoSeg: r.tiempoSeg,
+        rondas: r.rondas,
+        esfuerzo: esfuerzoDe(fila.esfuerzo),
+      });
+    }
+  }
+
+  if (bloques.length === 0) {
+    error("Marca al menos un ejercicio como hecho.");
+    return;
+  }
+
+  entrenos.push({ id: Date.now(), fecha: hojaFecha.value, tipo: hojaTipo.value, bloques: bloques });
+  if (!guardarEntrenos()) {
+    entrenos.pop();
+    error("No se ha podido guardar en este navegador.");
+    return;
+  }
+
+  cerrarHoja();
+  propuesta = null;
+  mostrarPropuesta();
+  mostrarHistorial();
+  mostrarPantalla("cuerpo");
+  mostrarToast("¡Entreno guardado! Así queda tu carga 💪");
+}
+
+document.getElementById("hoja-cancelar").addEventListener("click", cerrarHoja);
+document.getElementById("hoja-guardar-btn").addEventListener("click", guardarDesdeHoja);
 
 for (const boton of botonesFoco) {
   boton.addEventListener("click", () => {
@@ -565,6 +986,7 @@ const formFuerza = document.getElementById("form-fuerza");
 const fuerzaEjercicio = document.getElementById("fuerza-ejercicio");
 const fuerzaSeries = document.getElementById("fuerza-series");
 const fuerzaReps = document.getElementById("fuerza-reps");
+const fuerzaKg = document.getElementById("fuerza-kg");
 const fuerzaEsfuerzo = document.getElementById("fuerza-esfuerzo");
 
 const formWod = document.getElementById("form-wod");
@@ -630,7 +1052,8 @@ function describirBloque(b) {
     const resultado = b.resultado ? " → " + b.resultado : "";
     return "WOD " + b.formato + detalle + ": " + movs + resultado + esfuerzo;
   }
-  return nombreDe(b.ejercicio) + " · " + b.series + "×" + b.reps + esfuerzo;
+  const kg = b.kg ? " · " + b.kg + " kg" : "";
+  return nombreDe(b.ejercicio) + " · " + b.series + "×" + b.reps + kg + esfuerzo;
 }
 
 // --- Movimientos del WOD que se está preparando ---
@@ -695,18 +1118,25 @@ formFuerza.addEventListener("submit", (evento) => {
     mensajeReg("Series y repeticiones son obligatorias (números enteros).", true);
     return;
   }
+  const kg = leerKg(fuerzaKg.value);
+  if (Number.isNaN(kg)) {
+    mensajeReg("Los kg no son un número válido.", true);
+    return;
+  }
 
   borrador.push({
     tipo: "fuerza",
     ejercicio: fuerzaEjercicio.value,
     series: series,
     reps: reps,
+    kg: kg,
     esfuerzo: esfuerzoDe(fuerzaEsfuerzo),
   });
   guardarBorrador();
 
   fuerzaSeries.value = "";
   fuerzaReps.value = "";
+  fuerzaKg.value = "";
   fuerzaEsfuerzo.value = "";
   mensajeReg("");
   mostrarBorrador();

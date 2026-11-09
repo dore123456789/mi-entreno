@@ -4,6 +4,7 @@
 // id           fijo: no lo cambies nunca (el registro guarda el id, no el nombre)
 // grupo        para filtrar en la Biblioteca y para elegir foco en Hoy
 // tipo         principal | haltero | gimnastico | accesorio | metabolico
+//              | ligero (músculos pequeños, para días en que la zona está cargada)
 // musculos     los que más trabajan (cuentan entero en la carga)
 // secundarios  los que ayudan (cuentan la mitad)
 // cuidado      zonas que estresa: lumbar | rodilla | hombro
@@ -14,6 +15,7 @@ const MUSCULOS = {
   cuadriceps: "cuádriceps",
   isquios: "isquios",
   gluteos: "glúteos",
+  gemelos: "gemelos",
   lumbar: "lumbar",
   pecho: "pecho",
   espalda: "espalda",
@@ -42,7 +44,7 @@ const ejercicios = [
   { id: "subidas-cajon", nombre: "Subidas al cajón", grupo: ["pierna"], tipo: "accesorio",
     musculos: ["cuadriceps", "gluteos"], secundarios: [], cuidado: ["rodilla"], wod: { reps: 12 } },
   { id: "saltos-cajon", nombre: "Saltos al cajón", grupo: ["pierna"], tipo: "metabolico",
-    musculos: ["cuadriceps", "gluteos"], secundarios: [], cuidado: ["rodilla"], wod: { reps: 12 } },
+    musculos: ["cuadriceps", "gluteos"], secundarios: ["gemelos"], cuidado: ["rodilla"], wod: { reps: 12 } },
   { id: "sentadilla-aire", nombre: "Sentadilla sin peso", grupo: ["pierna"], tipo: "metabolico",
     musculos: ["cuadriceps"], secundarios: ["gluteos"], cuidado: [], wod: { reps: 20 } },
   { id: "wall-ball", nombre: "Wall ball", grupo: ["pierna", "tren superior"], tipo: "metabolico",
@@ -92,9 +94,9 @@ const ejercicios = [
   { id: "bici", nombre: "Bici de aire", grupo: ["cardio"], tipo: "metabolico",
     musculos: [], secundarios: ["cuadriceps"], cuidado: [], wod: { reps: 12, unidad: "cal" } },
   { id: "carrera", nombre: "Carrera", grupo: ["cardio"], tipo: "metabolico",
-    musculos: [], secundarios: ["cuadriceps", "isquios"], cuidado: ["rodilla"], wod: { reps: 200, unidad: "m" } },
+    musculos: [], secundarios: ["cuadriceps", "isquios", "gemelos"], cuidado: ["rodilla"], wod: { reps: 200, unidad: "m" } },
   { id: "comba", nombre: "Comba", grupo: ["cardio"], tipo: "metabolico",
-    musculos: [], secundarios: [], cuidado: [], wod: { reps: 50 } },
+    musculos: [], secundarios: ["gemelos"], cuidado: [], wod: { reps: 50 } },
   { id: "burpee", nombre: "Burpee", grupo: ["cardio"], tipo: "metabolico",
     musculos: [], secundarios: ["pecho", "cuadriceps", "core"], cuidado: [], wod: { reps: 10 } },
 
@@ -107,6 +109,43 @@ const ejercicios = [
     musculos: ["core"], secundarios: ["hombros"], cuidado: ["lumbar"] },
   { id: "elevaciones-piernas", nombre: "Elevaciones de piernas", grupo: ["core"], tipo: "accesorio",
     musculos: ["core"], secundarios: [], cuidado: [] },
+
+  // --- Ligeros: músculos pequeños, poca carga ---
+  { id: "elevacion-gemelos", nombre: "Elevación de gemelos", grupo: ["pierna"], tipo: "ligero",
+    musculos: ["gemelos"], secundarios: [], cuidado: [] },
+  { id: "abduccion-banda", nombre: "Abducción de cadera con banda", grupo: ["pierna"], tipo: "ligero",
+    musculos: [], secundarios: ["gluteos"], cuidado: [] },
+  { id: "monster-walk", nombre: "Monster walk con banda", grupo: ["pierna"], tipo: "ligero",
+    musculos: [], secundarios: ["gluteos"], cuidado: [] },
+  { id: "face-pull", nombre: "Face pull con banda", grupo: ["tren superior"], tipo: "ligero",
+    musculos: [], secundarios: ["hombros", "espalda"], cuidado: [] },
+  { id: "rotacion-externa", nombre: "Rotación externa con banda", grupo: ["tren superior"], tipo: "ligero",
+    musculos: [], secundarios: ["hombros"], cuidado: [] },
+  { id: "triceps-banda", nombre: "Extensión de tríceps con banda", grupo: ["tren superior"], tipo: "ligero",
+    musculos: ["brazos"], secundarios: [], cuidado: [] },
+  { id: "pallof-press", nombre: "Pallof press con banda", grupo: ["core"], tipo: "ligero",
+    musculos: [], secundarios: ["core"], cuidado: [] },
+  { id: "tecnica-palo", nombre: "Técnica de arrancada con palo", grupo: ["haltero"], tipo: "ligero",
+    musculos: [], secundarios: ["hombros"], cuidado: [] },
+];
+
+// ---------- Movilidad (para calentar y para días de descanso) ----------
+// zonas: músculos que prepara. dosis: lo que se hace.
+
+const MOVILIDAD = [
+  { nombre: "Movilidad de tobillo en pared", zonas: ["gemelos", "cuadriceps"], dosis: "10 por lado" },
+  { nombre: "Sentadilla profunda con pausa", zonas: ["cuadriceps", "gluteos"], dosis: "5 × 10 s" },
+  { nombre: "Rotaciones de cadera 90/90", zonas: ["gluteos"], dosis: "8 por lado" },
+  { nombre: "Puente de glúteo", zonas: ["gluteos", "lumbar"], dosis: "12" },
+  { nombre: "Buenos días sin peso", zonas: ["isquios", "lumbar"], dosis: "10" },
+  { nombre: "Gato-camello", zonas: ["lumbar", "espalda"], dosis: "10" },
+  { nombre: "Rotaciones torácicas a cuatro patas", zonas: ["espalda", "hombros"], dosis: "8 por lado" },
+  { nombre: "Dislocaciones con palo o banda", zonas: ["hombros", "pecho"], dosis: "10" },
+  { nombre: "Separaciones con banda", zonas: ["hombros", "espalda"], dosis: "15" },
+  { nombre: "Apertura de pecho en pared", zonas: ["pecho"], dosis: "30 s por lado" },
+  { nombre: "Círculos de brazos y muñecas", zonas: ["brazos"], dosis: "30 s" },
+  { nombre: "Dead bug", zonas: ["core"], dosis: "8 por lado" },
+  { nombre: "Colgarse de la barra", zonas: ["espalda", "hombros"], dosis: "2 × 20 s" },
 ];
 
 // Índice por id, y grupo "wod" automático para los que sirven en un WOD.

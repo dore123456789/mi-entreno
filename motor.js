@@ -7,22 +7,22 @@
 const OBJETIVOS = {
   general: {
     nombre: "Forma física general",
-    principal: [5, 5], haltero: [5, 3], gimnastico: [4, 8], accesorio: [3, 10], metabolico: [3, 12],
+    principal: [5, 5], haltero: [5, 3], gimnastico: [4, 8], accesorio: [3, 10], metabolico: [3, 12], ligero: [2, 15],
     wodMin: [10, 14],
   },
   fuerza: {
     nombre: "Ganar fuerza",
-    principal: [5, 3], haltero: [6, 2], gimnastico: [5, 5], accesorio: [3, 8], metabolico: [3, 10],
+    principal: [5, 3], haltero: [6, 2], gimnastico: [5, 5], accesorio: [3, 8], metabolico: [3, 10], ligero: [2, 15],
     wodMin: [6, 10],
   },
   musculo: {
     nombre: "Ganar músculo",
-    principal: [4, 8], haltero: [4, 3], gimnastico: [4, 10], accesorio: [3, 12], metabolico: [3, 15],
+    principal: [4, 8], haltero: [4, 3], gimnastico: [4, 10], accesorio: [3, 12], metabolico: [3, 15], ligero: [2, 15],
     wodMin: [8, 12],
   },
   resistencia: {
     nombre: "Resistencia",
-    principal: [3, 12], haltero: [4, 3], gimnastico: [3, 12], accesorio: [3, 15], metabolico: [3, 20],
+    principal: [3, 12], haltero: [4, 3], gimnastico: [3, 12], accesorio: [3, 15], metabolico: [3, 20], ligero: [2, 15],
     wodMin: [15, 20],
   },
 };
@@ -140,8 +140,13 @@ function puntuar(e, fatiga) {
   return nota;
 }
 
+// Sobrecargado si algún músculo principal tiene carga alta. Los ejercicios sin
+// músculo principal (cardio) miran sus secundarios: un burpee no se propone
+// con el cuádriceps reventado. Los ligeros solo miran sus principales: están
+// pensados justo para los días en que la zona está cargada.
 function estaSobrecargado(e, fatiga) {
-  return e.musculos.some(m => fatiga[m] >= UMBRAL_ALTO);
+  const aMirar = e.musculos.length > 0 || e.tipo === "ligero" ? e.musculos : e.secundarios;
+  return aMirar.some(m => fatiga[m] >= UMBRAL_ALTO);
 }
 
 function respetaCuidados(e, perfil) {
@@ -203,9 +208,139 @@ function repsWod(e, factor) {
   return Math.max(1, Math.round(e.wod.reps * factor));
 }
 
+// ---------- Foco bloqueado y bloque ligero ----------
+
+const TIPOS_FUERZA = ["principal", "haltero", "gimnastico", "accesorio"];
+const NOMBRES_FOCO = {
+  "pierna": "pierna",
+  "tren superior": "tren superior",
+  "haltero": "halterofilia",
+  "core": "core",
+};
+
+// Un foco está "bloqueado" si ninguno de sus ejercicios de fuerza se puede
+// hacer hoy (por carga alta o por las zonas a cuidar).
+// Devuelve [{ foco, cargados: ["cuadriceps", ...] }].
+function focosBloqueados(ctx) {
+  const bloqueados = [];
+  for (const foco of ctx.focos) {
+    const delGrupo = ejercicios.filter(e =>
+      e.grupo.includes(foco) && TIPOS_FUERZA.includes(e.tipo) && respetaCuidados(e, ctx.perfil)
+    );
+    if (delGrupo.some(e => !estaSobrecargado(e, ctx.fatiga))) {
+      continue;
+    }
+    const cargados = new Set();
+    for (const e of delGrupo) {
+      for (const m of e.musculos) {
+        if (ctx.fatiga[m] >= UMBRAL_ALTO) cargados.add(m);
+      }
+    }
+    bloqueados.push({ foco: foco, cargados: [...cargados] });
+  }
+  return bloqueados;
+}
+
+function textoAviso(bloqueo) {
+  const zona = NOMBRES_FOCO[bloqueo.foco] || bloqueo.foco;
+  if (bloqueo.cargados.length === 0) {
+    return "No hay ejercicios de " + zona + " compatibles con las zonas que cuidas. "
+      + "Te dejo un bloque ligero y el resto del entreno va a otras zonas.";
+  }
+  const lista = bloqueo.cargados.map(m => MUSCULOS[m]);
+  const musculos = lista.length > 1
+    ? lista.slice(0, -1).join(", ") + " y " + lista[lista.length - 1]
+    : lista[0];
+  return "Tienes " + musculos + " con carga alta. Hoy no toca fuerza de " + zona
+    + " para evitar sobrecargas: te dejo un bloque ligero de músculos pequeños "
+    + "y el resto del entreno trabaja otras zonas.";
+}
+
+function candidatosLigero(foco, ctx, usados) {
+  return ejercicios.filter(e =>
+    e.tipo === "ligero" &&
+    e.grupo.includes(foco) &&
+    !usados.includes(e.id) &&
+    respetaCuidados(e, ctx.perfil) &&
+    !estaSobrecargado(e, ctx.fatiga)
+  );
+}
+
+// ---------- Calentamiento y movilidad ----------
+
+// Elige ejercicios de movilidad que cubran los músculos con más peso.
+function elegirMovilidad(pesos, maximo) {
+  const elegidos = [];
+  const cubiertos = new Set();
+  while (elegidos.length < maximo) {
+    let mejor = null;
+    let mejorNota = 0;
+    for (const d of MOVILIDAD) {
+      if (elegidos.includes(d)) continue;
+      let nota = 0;
+      for (const z of d.zonas) {
+        if (!cubiertos.has(z)) nota += pesos[z] || 0;
+      }
+      if (nota > 0) nota += Math.random() * 0.5;
+      if (nota > mejorNota) {
+        mejor = d;
+        mejorNota = nota;
+      }
+    }
+    if (!mejor) break;
+    elegidos.push(mejor);
+    for (const z of mejor.zonas) cubiertos.add(z);
+  }
+  // Siempre al menos 2, aunque el día sea casi todo cardio.
+  while (elegidos.length < 2) {
+    const resto = MOVILIDAD.filter(d => !elegidos.includes(d));
+    elegidos.push(resto[aleatorioEntre(0, resto.length - 1)]);
+  }
+  return elegidos;
+}
+
+// Calentamiento a medida de la propuesta: cardio suave + movilidad de los
+// músculos que se van a usar + aproximación del primer ejercicio de fuerza.
+function crearCalentamiento(propuesta, perfil, anterior) {
+  const pesos = {};
+  const sumar = (id, k) => {
+    const e = porId[id];
+    for (const m of e.musculos) pesos[m] = (pesos[m] || 0) + 2 * k;
+    for (const m of e.secundarios) pesos[m] = (pesos[m] || 0) + k;
+  };
+  propuesta.fuerza.forEach(f => sumar(f.ejercicio, 1));
+  propuesta.ligero.forEach(l => sumar(l.ejercicio, 0.5));
+  const enWod = propuesta.wod ? propuesta.wod.movimientos.map(m => m.ejercicio) : [];
+  enWod.forEach(id => sumar(id, 1));
+
+  // Cardio suave que no esté ya en el WOD (y que se mantenga si sigue valiendo).
+  const opciones = ["remo", "bici", "comba", "carrera"]
+    .filter(id => !enWod.includes(id) && respetaCuidados(porId[id], perfil));
+  let cardio = anterior && opciones.includes(anterior.cardio) ? anterior.cardio : null;
+  if (!cardio && opciones.length > 0) {
+    cardio = opciones[aleatorioEntre(0, opciones.length - 1)];
+  }
+
+  const primero = propuesta.fuerza.length > 0 ? porId[propuesta.fuerza[0].ejercicio] : null;
+  const conAproximacion = primero && (primero.tipo === "principal" || primero.tipo === "haltero");
+
+  return {
+    cardio: cardio,
+    movilidad: elegirMovilidad(pesos, 4),
+    aproximacion: conAproximacion ? primero.id : null,
+  };
+}
+
 // ---------- Propuesta del día ----------
 // datos = { perfil, focos, entrenos, hoy }
-// Devuelve { fuerza: [{hueco, ejercicio, series, reps}], wod: {...} o null }
+// Devuelve {
+//   avisos: ["texto", ...],
+//   calentamiento: {...},
+//   fuerza: [{hueco, ejercicio, series, reps}],
+//   ligero: [{foco, ejercicio, series, reps}],
+//   wod: {...} o null,
+//   movilidad: [...]  (solo si hoy toca descanso)
+// }
 
 function crearContexto(datos) {
   return {
@@ -218,6 +353,22 @@ function crearContexto(datos) {
 function proponerEntreno(datos) {
   const ctx = crearContexto(datos);
   const objetivo = datos.perfil.objetivo;
+  const fatigaInicial = { ...ctx.fatiga };
+
+  // Focos que hoy no se pueden trabajar fuerte: aviso + bloque ligero.
+  const bloqueos = focosBloqueados(ctx);
+  const avisos = bloqueos.map(textoAviso);
+  const ligero = [];
+  for (const b of bloqueos) {
+    for (let k = 0; k < 2; k++) {
+      const usados = ligero.map(l => l.ejercicio);
+      const e = elegirMenosCargado(candidatosLigero(b.foco, ctx, usados), ctx.fatiga);
+      if (!e) break;
+      const [series, reps] = esquemaDe(objetivo, e);
+      ligero.push({ foco: b.foco, ejercicio: e.id, series: series, reps: reps });
+      sumarCarga(ctx.fatiga, e, series);
+    }
+  }
 
   // Bloque de fuerza. Cada ejercicio elegido suma su carga "de mentira" a la
   // fatiga, así el siguiente hueco evita los mismos músculos.
@@ -262,18 +413,32 @@ function proponerEntreno(datos) {
       const rondas = Math.max(2, Math.round(minutos / 4));
       detalle = rondas + " rondas, límite " + minutos + " min";
     }
-    wod = { formato: formato, detalle: detalle, factorReps: factorReps, movimientos: movimientos };
+    wod = { formato: formato, detalle: detalle, minutos: minutos, factorReps: factorReps, movimientos: movimientos };
   }
 
-  return { fuerza: fuerza, wod: wod };
+  const propuesta = { avisos: avisos, fuerza: fuerza, ligero: ligero, wod: wod, calentamiento: null, movilidad: null };
+
+  if (fuerza.length === 0) {
+    // Ningún ejercicio de fuerza es seguro: día de descanso con movilidad
+    // para lo más cargado.
+    propuesta.movilidad = elegirMovilidad(fatigaInicial, 5);
+  } else {
+    propuesta.calentamiento = crearCalentamiento(propuesta, datos.perfil, null);
+  }
+  return propuesta;
 }
 
 // Cambia un ejercicio de la propuesta por otro del mismo papel.
-// parte = "fuerza" o "wod". Devuelve false si no hay alternativa.
+// parte = "fuerza", "ligero" o "wod". Devuelve false si no hay alternativa.
 function sustituirEnPropuesta(propuesta, datos, parte, i) {
   const ctx = crearContexto(datos);
 
   // La carga del resto de la propuesta también cuenta.
+  propuesta.ligero.forEach((l, j) => {
+    if (!(parte === "ligero" && j === i)) {
+      sumarCarga(ctx.fatiga, porId[l.ejercicio], l.series);
+    }
+  });
   propuesta.fuerza.forEach((f, j) => {
     if (!(parte === "fuerza" && j === i)) {
       sumarCarga(ctx.fatiga, porId[f.ejercicio], f.series);
@@ -287,23 +452,36 @@ function sustituirEnPropuesta(propuesta, datos, parte, i) {
     });
   }
 
+  let cambiado = false;
   if (parte === "fuerza") {
     const usados = propuesta.fuerza.map(f => f.ejercicio);
     const hueco = propuesta.fuerza[i].hueco;
     const e = elegirMenosCargado(candidatosFuerza(hueco, ctx, usados), ctx.fatiga);
-    if (!e) {
-      return false;
+    if (e) {
+      const [series, reps] = esquemaDe(datos.perfil.objetivo, e);
+      propuesta.fuerza[i] = { hueco: hueco, ejercicio: e.id, series: series, reps: reps };
+      cambiado = true;
     }
-    const [series, reps] = esquemaDe(datos.perfil.objetivo, e);
-    propuesta.fuerza[i] = { hueco: hueco, ejercicio: e.id, series: series, reps: reps };
-    return true;
+  } else if (parte === "ligero") {
+    const usados = propuesta.ligero.map(l => l.ejercicio);
+    const foco = propuesta.ligero[i].foco;
+    const e = elegirMenosCargado(candidatosLigero(foco, ctx, usados), ctx.fatiga);
+    if (e) {
+      const [series, reps] = esquemaDe(datos.perfil.objetivo, e);
+      propuesta.ligero[i] = { foco: foco, ejercicio: e.id, series: series, reps: reps };
+      cambiado = true;
+    }
+  } else {
+    const usados = propuesta.wod.movimientos.map(m => m.ejercicio);
+    const e = elegirMenosCargado(candidatosWod(i, ctx, usados), ctx.fatiga);
+    if (e) {
+      propuesta.wod.movimientos[i] = { ejercicio: e.id, reps: repsWod(e, propuesta.wod.factorReps) };
+      cambiado = true;
+    }
   }
 
-  const usados = propuesta.wod.movimientos.map(m => m.ejercicio);
-  const e = elegirMenosCargado(candidatosWod(i, ctx, usados), ctx.fatiga);
-  if (!e) {
-    return false;
+  if (cambiado) {
+    propuesta.calentamiento = crearCalentamiento(propuesta, datos.perfil, propuesta.calentamiento);
   }
-  propuesta.wod.movimientos[i] = { ejercicio: e.id, reps: repsWod(e, propuesta.wod.factorReps) };
-  return true;
+  return cambiado;
 }
