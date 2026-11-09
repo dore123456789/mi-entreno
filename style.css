@@ -1,30 +1,49 @@
+/* ---------- Colores (claro y oscuro automático) ---------- */
+
 :root {
-  --fondo: #f5f6f8;
+  --fondo: #f4f3f8;
   --tarjeta: #ffffff;
-  --texto: #1c1c1e;
-  --suave: #6b7280;
-  --borde: #d9dce1;
-  --acento: #1a73e8;
+  --texto: #17151f;
+  --suave: #6e6a7c;
+  --borde: #e6e3ee;
+  --acento: #5b4dff;
+  --acento-suave: #ecebff;
   --acento-texto: #ffffff;
-  --oscuro: #1c1c1e;
-  --error: #d93025;
-  --aviso: #b26a00;
+  --error: #d93a3f;
+  --sombra: 0 1px 2px rgba(23, 21, 31, 0.04), 0 6px 20px rgba(23, 21, 31, 0.06);
+
+  /* Cuerpo y niveles de carga */
+  --cuerpo: #e4e1ec;
+  --cuerpo-detalle: #ffffff;
+  --m-libre: #cbc6dc;
+  --m-baja: #6fcf97;
+  --m-media: #f5b748;
+  --m-alta: #ef5b5b;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --fondo: #0f1115;
-    --tarjeta: #1b1e24;
-    --texto: #f2f3f5;
-    --suave: #9aa1ad;
-    --borde: #343944;
-    --acento: #5b9dff;
-    --acento-texto: #0b1220;
-    --oscuro: #f2f3f5;
+    --fondo: #0e0d13;
+    --tarjeta: #1a1922;
+    --texto: #f3f2f8;
+    --suave: #a19cb3;
+    --borde: #2c2a38;
+    --acento: #7c70ff;
+    --acento-suave: #25213f;
+    --acento-texto: #ffffff;
     --error: #ff6b6b;
-    --aviso: #f0b44c;
+    --sombra: none;
+
+    --cuerpo: #2a2836;
+    --cuerpo-detalle: #1a1922;
+    --m-libre: #45415a;
+    --m-baja: #3fa873;
+    --m-media: #e0a030;
+    --m-alta: #e5534b;
   }
 }
+
+/* ---------- Base ---------- */
 
 * { box-sizing: border-box; }
 
@@ -34,59 +53,91 @@ body {
   color: var(--texto);
   font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
   line-height: 1.4;
+  -webkit-tap-highlight-color: transparent;
 }
 
 main {
   max-width: 480px;
   margin: 0 auto;
-  padding: 16px 16px calc(88px + env(safe-area-inset-bottom));
+  padding: calc(12px + env(safe-area-inset-top)) 16px calc(96px + env(safe-area-inset-bottom));
 }
 
-h1 { font-size: 26px; margin: 8px 0 16px; }
-h2 { font-size: 18px; margin: 20px 0 8px; }
-h3 { font-size: 15px; margin: 20px 0 8px; color: var(--suave); }
+h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; margin: 4px 0 16px; }
+h2 { font-size: 18px; font-weight: 700; margin: 24px 0 8px; }
+h3 { font-size: 13px; font-weight: 700; margin: 24px 0 8px; color: var(--suave); text-transform: uppercase; letter-spacing: 0.04em; }
 .tarjeta h2 { margin-top: 0; }
 
 ul { list-style: none; margin: 0; padding: 0; }
+figure { margin: 0; }
 
 button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: default; }
 
 input, select {
   width: 100%;
-  padding: 10px;
+  padding: 11px 12px;
   font: inherit;
   font-size: 16px;
   color: var(--texto);
-  background: var(--tarjeta);
+  background: var(--fondo);
   border: 1px solid var(--borde);
-  border-radius: 10px;
+  border-radius: 12px;
+  outline: none;
 }
+input:focus, select:focus { border-color: var(--acento); }
 
 label {
   display: block;
-  margin: 6px 0;
+  margin: 8px 0;
   font-size: 13px;
+  font-weight: 600;
   color: var(--suave);
 }
 label > input, label > select { margin-top: 4px; }
 
 .fila { display: flex; gap: 8px; }
 .fila > label { flex: 1; min-width: 0; }
+.fila > label.estrecho { flex: 0 0 30%; }
+
+.saludo { margin: 8px 0 0; font-size: 14px; font-weight: 600; color: var(--suave); }
+.ayuda { margin: 4px 0 10px; font-size: 14px; color: var(--suave); }
+.opcional { margin-left: 6px; font-size: 12px; font-weight: 600; color: var(--suave); }
+
+/* ---------- Tarjetas ---------- */
 
 .tarjeta {
   margin-bottom: 16px;
-  padding: 16px;
+  padding: 18px;
   background: var(--tarjeta);
   border: 1px solid var(--borde);
-  border-radius: 16px;
+  border-radius: 20px;
+  box-shadow: var(--sombra);
 }
 
-/* ---- Botones ---- */
+.tarjeta-boton {
+  display: block;
+  width: 100%;
+  text-align: left;
+}
+.tarjeta-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.titulo-tarjeta { font-size: 17px; font-weight: 700; }
+.enlace { font-size: 14px; font-weight: 600; color: var(--acento); }
+
+.lista-tarjeta { padding-top: 4px; padding-bottom: 4px; }
+
+/* ---------- Botones ---------- */
+
+.focos { display: flex; flex-wrap: wrap; gap: 8px; }
 
 .grupo {
-  margin: 4px 4px 4px 0;
   padding: 10px 16px;
-  font-size: 16px;
+  font-size: 15px;
+  font-weight: 600;
   background: var(--tarjeta);
   border: 1.5px solid var(--borde);
   border-radius: 999px;
@@ -100,82 +151,62 @@ label > input, label > select { margin-top: 4px; }
 .principal {
   display: block;
   width: 100%;
-  margin-top: 16px;
-  padding: 14px;
+  margin: 20px 0 16px;
+  padding: 16px;
   font-size: 17px;
-  font-weight: 600;
-  color: var(--fondo);
-  background: var(--oscuro);
+  font-weight: 700;
+  color: var(--acento-texto);
+  background: var(--acento);
   border: none;
-  border-radius: 12px;
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(91, 77, 255, 0.28);
 }
+.principal:active { transform: scale(0.98); }
 
 .secundario {
   display: block;
   width: 100%;
   margin-top: 8px;
   padding: 12px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--acento);
-  background: transparent;
-  border: 1.5px solid var(--acento);
-  border-radius: 12px;
+  background: var(--acento-suave);
+  border: none;
+  border-radius: 14px;
 }
 
 .mini {
   padding: 6px 12px;
-  font-size: 14px;
-  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--suave);
+  background: var(--fondo);
   border: 1px solid var(--borde);
   border-radius: 999px;
 }
 .mini.video {
   color: var(--acento);
-  border-color: var(--acento);
+  background: var(--acento-suave);
+  border-color: transparent;
 }
 
 .acciones { display: flex; gap: 6px; flex-shrink: 0; }
-.info { flex: 1; min-width: 0; }
 
-.ayuda { margin: 4px 0 8px; font-size: 14px; color: var(--suave); }
-
-/* ---- Perfil ---- */
-
-.opcion {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 8px 0;
-  padding: 12px;
-  font-size: 15px;
-  color: var(--texto);
-  border: 1px solid var(--borde);
-  border-radius: 12px;
-  cursor: pointer;
-}
-.opcion input { width: auto; margin: 0; flex-shrink: 0; }
-.opcion small { display: block; font-size: 13px; color: var(--suave); }
-
-/* ---- Carga muscular ---- */
-
-.chip.carga-alta { color: var(--error); border-color: var(--error); font-weight: 600; }
-.chip.carga-media { color: var(--aviso); border-color: var(--aviso); }
-.chip.carga-baja { opacity: 0.55; }
-
-/* ---- Listas de ejercicios (Hoy y Biblioteca) ---- */
+/* ---------- Listas de ejercicios ---------- */
 
 .fila-ejercicio {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
   padding: 12px 0;
-  font-size: 17px;
+  font-size: 16px;
   border-bottom: 1px solid var(--borde);
 }
 .fila-ejercicio:last-child { border-bottom: none; }
 
+.info { flex: 1; min-width: 0; }
+.info .nombre { font-weight: 600; }
 .info small {
   display: block;
   margin-top: 2px;
@@ -183,67 +214,235 @@ label > input, label > select { margin-top: 4px; }
   color: var(--suave);
 }
 
+.num {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--acento);
+  background: var(--acento-suave);
+  border-radius: 50%;
+}
+
+.pill {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--acento);
+  background: var(--acento-suave);
+  border-radius: 999px;
+  vertical-align: 1px;
+}
+
 .contenedor-video { width: 100%; }
 .contenedor-video iframe {
   width: 100%;
   aspect-ratio: 16 / 9;
   border: 0;
-  border-radius: 12px;
+  border-radius: 14px;
 }
 
-/* ---- Registro ---- */
+/* WOD destacado */
+.tarjeta.wod {
+  background: linear-gradient(160deg, var(--acento-suave), var(--tarjeta) 70%);
+}
+.wod-cabecera { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+.wod-cabecera h2 { margin: 0; }
+.formato {
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--acento-texto);
+  background: var(--acento);
+  border-radius: 999px;
+}
+
+/* ---------- Chips y carga ---------- */
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 12px;
   font-size: 14px;
+  font-weight: 600;
   background: var(--fondo);
-  border: 1px solid var(--borde);
   border-radius: 999px;
 }
-.chip.vacio { opacity: 0.5; }
+
+.punto {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+.punto.libre { background: var(--m-libre); }
+.punto.baja { background: var(--m-baja); }
+.punto.media { background: var(--m-media); }
+.punto.alta { background: var(--m-alta); }
+
+.vacio-texto { padding: 8px 0; font-size: 14px; color: var(--suave); }
+
+/* ---------- Pantalla Cuerpo ---------- */
+
+.cuerpos { display: flex; justify-content: center; gap: 8px; }
+.cuerpos figure { flex: 1; max-width: 170px; text-align: center; }
+.cuerpos figcaption { margin-top: 4px; font-size: 13px; font-weight: 600; color: var(--suave); }
+
+.figura { width: 100%; height: auto; display: block; }
+.figura .base { fill: var(--cuerpo); }
+.figura .detalle {
+  fill: none;
+  stroke: var(--cuerpo-detalle);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.musculos > * {
+  fill: var(--m-libre);
+  stroke: var(--tarjeta);
+  stroke-width: 2;
+  cursor: pointer;
+  transition: fill 0.3s, opacity 0.2s;
+}
+.musculos > .baja { fill: var(--m-baja); }
+.musculos > .media { fill: var(--m-media); }
+.musculos > .alta { fill: var(--m-alta); }
+.figura.con-seleccion .musculos > *:not(.seleccionado) { opacity: 0.35; }
+
+.leyenda {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--suave);
+}
+.leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+
+.barra-fila {
+  display: grid;
+  grid-template-columns: 92px 1fr 52px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  background: none;
+  border: none;
+}
+.barra-fila .nivel { font-size: 12px; color: var(--suave); text-align: right; }
+.barra {
+  height: 10px;
+  overflow: hidden;
+  background: var(--fondo);
+  border-radius: 999px;
+}
+.barra > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s;
+}
+.barra > .libre { background: var(--m-libre); }
+.barra > .baja { background: var(--m-baja); }
+.barra > .media { background: var(--m-media); }
+.barra > .alta { background: var(--m-alta); }
+
+.detalle-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.detalle-cabecera h2 { margin: 0; text-transform: capitalize; }
+.estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--fondo);
+  border-radius: 999px;
+}
+.recuperacion { margin: 12px 0 4px; font-size: 16px; font-weight: 600; }
+
+/* ---------- Perfil ---------- */
+
+.opcion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--texto);
+  background: var(--fondo);
+  border: 1.5px solid transparent;
+  border-radius: 14px;
+  cursor: pointer;
+}
+.opcion:has(input:checked) { border-color: var(--acento); background: var(--acento-suave); }
+.opcion input { width: 18px; height: 18px; margin: 0; flex-shrink: 0; accent-color: var(--acento); }
+.opcion strong { font-weight: 700; }
+.opcion small { display: block; font-size: 13px; color: var(--suave); }
+
+/* ---------- Registro ---------- */
 
 .bloque {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
-  padding: 8px 0;
+  padding: 10px 0;
   font-size: 15px;
   border-bottom: 1px solid var(--borde);
 }
-
-.vacio-texto { padding: 8px 0; font-size: 14px; color: var(--suave); }
+.bloque:last-child { border-bottom: none; }
 
 .mensaje { min-height: 1.4em; margin: 8px 0 0; font-size: 14px; color: var(--suave); }
 .mensaje.error { color: var(--error); }
 
 .entreno {
-  margin-bottom: 10px;
-  padding: 12px 14px;
+  margin-bottom: 12px;
+  padding: 14px 16px;
   background: var(--tarjeta);
   border: 1px solid var(--borde);
-  border-radius: 14px;
+  border-radius: 18px;
+  box-shadow: var(--sombra);
 }
 .entreno-cabecera {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 6px;
-  font-weight: 600;
+  font-weight: 700;
+  text-transform: capitalize;
 }
 .etiqueta {
   margin-left: 8px;
   padding: 2px 8px;
   font-size: 12px;
-  font-weight: 600;
-  color: var(--suave);
-  background: var(--fondo);
+  font-weight: 700;
+  text-transform: none;
+  color: var(--acento);
+  background: var(--acento-suave);
   border-radius: 999px;
 }
-.linea-bloque { padding: 4px 0; font-size: 15px; }
+.linea-bloque { padding: 4px 0; font-size: 15px; color: var(--suave); }
 
-/* ---- Navegación inferior ---- */
+/* ---------- Navegación inferior ---------- */
 
 nav {
   position: fixed;
@@ -251,16 +450,34 @@ nav {
   right: 0;
   bottom: 0;
   display: flex;
-  padding-bottom: env(safe-area-inset-bottom);
-  background: var(--tarjeta);
+  justify-content: center;
+  padding: 6px 4px env(safe-area-inset-bottom);
+  background: color-mix(in srgb, var(--tarjeta) 88%, transparent);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
   border-top: 1px solid var(--borde);
 }
 .nav-btn {
   flex: 1;
-  padding: 14px 0;
-  font-size: 15px;
+  max-width: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 0 8px;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--suave);
   background: transparent;
   border: none;
 }
-.nav-btn.activo { font-weight: 700; color: var(--acento); }
+.nav-btn svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.nav-btn.activo { color: var(--acento); }

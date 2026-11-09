@@ -89,29 +89,45 @@ function crearParrafo(texto, clase) {
   return p;
 }
 
-// Chips de carga muscular. soloCargados = true oculta los músculos descansados.
-function pintarCarga(contenedor, soloCargados) {
-  const fatiga = calcularFatiga(entrenos, new Date());
-  contenedor.textContent = "";
-  let alguno = false;
+// ---------- Carga muscular en pantalla ----------
 
-  for (const m in MUSCULOS) {
-    const nivel = nivelCarga(fatiga[m]);
-    if (soloCargados && nivel === "baja") {
-      continue;
-    }
-    alguno = true;
-    const chip = document.createElement("span");
-    chip.className = "chip carga-" + nivel;
-    chip.textContent = MUSCULOS[m] + " · " + nivel;
-    contenedor.appendChild(chip);
+// Para dibujar se usan 4 niveles: "libre" es carga casi cero.
+const NOMBRES_NIVEL = { libre: "Libre", baja: "Ligera", media: "Media", alta: "Alta" };
+
+function nivelVista(valor) {
+  return valor < 0.5 ? "libre" : nivelCarga(valor);
+}
+
+function crearPunto(nivel) {
+  const punto = document.createElement("i");
+  punto.className = "punto " + nivel;
+  return punto;
+}
+
+// Chips de los músculos con carga media o alta (resumen de Hoy).
+function pintarCargaHoy() {
+  const fatiga = calcularFatiga(entrenos, new Date());
+  cargaHoy.textContent = "";
+
+  const cargados = Object.keys(MUSCULOS)
+    .filter(m => nivelCarga(fatiga[m]) !== "baja")
+    .sort((a, b) => fatiga[b] - fatiga[a]);
+
+  if (cargados.length === 0) {
+    const texto = document.createElement("span");
+    texto.className = "ayuda";
+    texto.textContent = "Todo descansado: puedes ir a por todo.";
+    cargaHoy.appendChild(texto);
+    return;
   }
 
-  if (!alguno) {
-    const texto = document.createElement("span");
-    texto.className = "vacio-texto";
-    texto.textContent = "Todo descansado: puedes ir a por todo.";
-    contenedor.appendChild(texto);
+  for (const m of cargados) {
+    const nivel = nivelCarga(fatiga[m]);
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    chip.appendChild(crearPunto(nivel));
+    chip.appendChild(document.createTextNode(MUSCULOS[m] + " · " + NOMBRES_NIVEL[nivel].toLowerCase()));
+    cargaHoy.appendChild(chip);
   }
 }
 
@@ -176,19 +192,31 @@ function datosMotor() {
   return { perfil: perfil, focos: focos, entrenos: entrenos, hoy: new Date() };
 }
 
-// Fila con nombre, detalle y botones "vídeo" y "cambiar".
+// Fila con número, nombre, esquema (opcional), detalle y botones "vídeo" y "cambiar".
 // alCambiar() debe devolver true si ha encontrado sustituto.
-function crearFilaPropuesta(ejercicio, titulo, detalle, alCambiar) {
+function crearFilaPropuesta(numero, ejercicio, titulo, esquema, detalle, alCambiar) {
   const li = document.createElement("li");
   li.className = "fila-ejercicio";
+
+  const num = document.createElement("span");
+  num.className = "num";
+  num.textContent = numero;
+  li.appendChild(num);
 
   const info = document.createElement("div");
   info.className = "info";
   const nombre = document.createElement("span");
+  nombre.className = "nombre";
   nombre.textContent = titulo;
+  info.appendChild(nombre);
+  if (esquema) {
+    const pill = document.createElement("span");
+    pill.className = "pill";
+    pill.textContent = esquema;
+    info.appendChild(pill);
+  }
   const pequeno = document.createElement("small");
   pequeno.textContent = detalle;
-  info.appendChild(nombre);
   info.appendChild(pequeno);
 
   const acciones = document.createElement("div");
@@ -197,7 +225,7 @@ function crearFilaPropuesta(ejercicio, titulo, detalle, alCambiar) {
   if (botonVideo) {
     acciones.appendChild(botonVideo);
   }
-  const botonCambiar = crearBotonMini("cambiar", () => {
+  const botonCambiar = crearBotonMini("↻ cambiar", () => {
     if (alCambiar()) {
       mostrarPropuesta();
     } else {
@@ -234,9 +262,11 @@ function mostrarPropuesta() {
     propuesta.fuerza.forEach((f, i) => {
       const e = porId[f.ejercicio];
       ul.appendChild(crearFilaPropuesta(
+        i + 1,
         e,
         e.nombre,
-        f.series + "×" + f.reps + " · " + textoMusculos(e),
+        f.series + "×" + f.reps,
+        textoMusculos(e),
         () => sustituirEnPropuesta(propuesta, datosMotor(), "fuerza", i)
       ));
     });
@@ -248,14 +278,28 @@ function mostrarPropuesta() {
   }
 
   if (propuesta.wod) {
-    const tarjeta = crearTarjeta("WOD · " + propuesta.wod.formato);
+    const tarjeta = document.createElement("div");
+    tarjeta.className = "tarjeta wod";
+    const cabecera = document.createElement("div");
+    cabecera.className = "wod-cabecera";
+    const h2 = document.createElement("h2");
+    h2.textContent = "WOD";
+    const formato = document.createElement("span");
+    formato.className = "formato";
+    formato.textContent = propuesta.wod.formato.toUpperCase();
+    cabecera.appendChild(h2);
+    cabecera.appendChild(formato);
+    tarjeta.appendChild(cabecera);
     tarjeta.appendChild(crearParrafo(propuesta.wod.detalle, "ayuda"));
+
     const ul = document.createElement("ul");
     propuesta.wod.movimientos.forEach((mov, i) => {
       const e = porId[mov.ejercicio];
       ul.appendChild(crearFilaPropuesta(
+        i + 1,
         e,
         textoMovimiento(mov),
+        null,
         textoMusculos(e),
         () => sustituirEnPropuesta(propuesta, datosMotor(), "wod", i)
       ));
@@ -319,7 +363,158 @@ botonProponer.addEventListener("click", () => {
   }
   propuesta = proponerEntreno(datosMotor());
   mostrarPropuesta();
+  contenedorPropuesta.scrollIntoView({ behavior: "smooth", block: "start" });
 });
+
+document.getElementById("resumen-cuerpo").addEventListener("click", () => mostrarPantalla("cuerpo"));
+
+function pintarSaludo() {
+  const ahora = new Date();
+  const hora = ahora.getHours();
+  const saludo = hora < 6 ? "Buenas noches" : hora < 14 ? "Buenos días" : hora < 21 ? "Buenas tardes" : "Buenas noches";
+  const fecha = ahora.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+  document.getElementById("saludo").textContent = saludo + " · " + fecha;
+}
+
+// ---------- Pantalla "Cuerpo" ----------
+
+const figuras = document.querySelectorAll(".figura");
+const zonasMusculo = document.querySelectorAll("[data-musculo]");
+const detalleMusculo = document.getElementById("detalle-musculo");
+const barrasCarga = document.getElementById("barras-carga");
+let musculoElegido = null;
+
+// Días hasta que la carga baje de "media". Se calcula mirando la fatiga
+// en días futuros con los mismos entrenos.
+function diasHastaRecuperar(musculo) {
+  const hoy = new Date();
+  for (let d = 0; d <= RECUPERACION.length; d++) {
+    const dia = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + d);
+    if (calcularFatiga(entrenos, dia)[musculo] < UMBRAL_MEDIO) {
+      return d;
+    }
+  }
+  return RECUPERACION.length;
+}
+
+// Ejercicios de los últimos 7 días que han cargado este músculo.
+function ejerciciosRecientes(musculo) {
+  const hoy = new Date();
+  const nombres = new Set();
+  for (const entreno of entrenos) {
+    const dias = diasEntre(entreno.fecha, hoy);
+    if (dias < 0 || dias >= RECUPERACION.length) {
+      continue;
+    }
+    for (const bloque of entreno.bloques) {
+      const ids = bloque.tipo === "wod" ? bloque.movimientos.map(m => m.ejercicio) : [bloque.ejercicio];
+      for (const id of ids) {
+        const e = porId[id];
+        if (e && (e.musculos.includes(musculo) || e.secundarios.includes(musculo))) {
+          nombres.add(e.nombre);
+        }
+      }
+    }
+  }
+  return [...nombres];
+}
+
+function elegirMusculo(musculo) {
+  musculoElegido = musculoElegido === musculo ? null : musculo;
+  mostrarCuerpo();
+  if (musculoElegido) {
+    detalleMusculo.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+}
+
+function mostrarDetalleMusculo(fatiga) {
+  detalleMusculo.textContent = "";
+  detalleMusculo.hidden = musculoElegido === null;
+  if (!musculoElegido) {
+    return;
+  }
+
+  const m = musculoElegido;
+  const nivel = nivelVista(fatiga[m]);
+
+  const cabecera = document.createElement("div");
+  cabecera.className = "detalle-cabecera";
+  const h2 = document.createElement("h2");
+  h2.textContent = MUSCULOS[m];
+  const estado = document.createElement("span");
+  estado.className = "estado";
+  estado.appendChild(crearPunto(nivel));
+  estado.appendChild(document.createTextNode("Carga " + NOMBRES_NIVEL[nivel].toLowerCase()));
+  cabecera.appendChild(h2);
+  cabecera.appendChild(estado);
+  detalleMusculo.appendChild(cabecera);
+
+  const dias = diasHastaRecuperar(m);
+  let texto;
+  if (dias === 0) {
+    texto = nivel === "libre" ? "Fresco. Listo para darle caña." : "Listo para entrenar, con algo de carga.";
+  } else if (dias === 1) {
+    texto = "Recuperado mañana, aproximadamente.";
+  } else {
+    texto = "Recuperado en unos " + dias + " días.";
+  }
+  detalleMusculo.appendChild(crearParrafo(texto, "recuperacion"));
+
+  const recientes = ejerciciosRecientes(m);
+  detalleMusculo.appendChild(crearParrafo(
+    recientes.length > 0
+      ? "Esta semana lo has trabajado con: " + recientes.join(", ") + "."
+      : "No lo has trabajado esta semana.",
+    "ayuda"
+  ));
+}
+
+function mostrarCuerpo() {
+  const fatiga = calcularFatiga(entrenos, new Date());
+
+  for (const zona of zonasMusculo) {
+    const m = zona.dataset.musculo;
+    zona.setAttribute("class", nivelVista(fatiga[m]) + (m === musculoElegido ? " seleccionado" : ""));
+  }
+  for (const figura of figuras) {
+    figura.classList.toggle("con-seleccion", musculoElegido !== null);
+  }
+
+  barrasCarga.textContent = "";
+  const ordenados = Object.keys(MUSCULOS).sort((a, b) => fatiga[b] - fatiga[a]);
+  for (const m of ordenados) {
+    const nivel = nivelVista(fatiga[m]);
+    const li = document.createElement("li");
+    const fila = document.createElement("button");
+    fila.type = "button";
+    fila.className = "barra-fila";
+    fila.addEventListener("click", () => elegirMusculo(m));
+
+    const nombre = document.createElement("span");
+    nombre.textContent = MUSCULOS[m];
+    const barra = document.createElement("span");
+    barra.className = "barra";
+    const relleno = document.createElement("span");
+    relleno.className = nivel;
+    relleno.style.width = Math.max(4, Math.min(100, fatiga[m] / (UMBRAL_ALTO * 1.5) * 100)) + "%";
+    barra.appendChild(relleno);
+    const etiqueta = document.createElement("span");
+    etiqueta.className = "nivel";
+    etiqueta.textContent = NOMBRES_NIVEL[nivel];
+
+    fila.appendChild(nombre);
+    fila.appendChild(barra);
+    fila.appendChild(etiqueta);
+    li.appendChild(fila);
+    barrasCarga.appendChild(li);
+  }
+
+  mostrarDetalleMusculo(fatiga);
+}
+
+for (const zona of zonasMusculo) {
+  zona.addEventListener("click", () => elegirMusculo(zona.dataset.musculo));
+}
 
 // ---------- Pantalla "Biblioteca" (solo lectura) ----------
 
@@ -342,6 +537,7 @@ function mostrarBiblioteca() {
     const info = document.createElement("div");
     info.className = "info";
     const nombre = document.createElement("span");
+    nombre.className = "nombre";
     nombre.textContent = ejercicio.nombre;
     const musculos = document.createElement("small");
     musculos.textContent = textoMusculos(ejercicio);
@@ -385,7 +581,6 @@ const listaBorrador = document.getElementById("borrador");
 const mensajeRegistro = document.getElementById("mensaje-registro");
 const btnGuardarEntreno = document.getElementById("btn-guardar-entreno");
 const listaHistorial = document.getElementById("historial");
-const resumenSemana = document.getElementById("resumen-semana");
 
 let wodMovs = [];
 
@@ -569,7 +764,6 @@ btnGuardarEntreno.addEventListener("click", () => {
   guardarBorrador();
   mostrarBorrador();
   mostrarHistorial();
-  pintarCarga(resumenSemana, false);
   propuesta = null;
   mostrarPropuesta();
   mensajeReg("Entreno guardado.");
@@ -614,7 +808,6 @@ function mostrarHistorial() {
       entrenos = entrenos.filter(x => x.id !== entreno.id);
       guardarEntrenos();
       mostrarHistorial();
-      pintarCarga(resumenSemana, false);
     }));
     li.appendChild(cabecera);
 
@@ -696,6 +889,7 @@ formPerfil.addEventListener("submit", (evento) => {
 
 const pantallas = {
   hoy: document.getElementById("pantalla-hoy"),
+  cuerpo: document.getElementById("pantalla-cuerpo"),
   registro: document.getElementById("pantalla-registro"),
   biblioteca: document.getElementById("pantalla-biblioteca"),
   perfil: document.getElementById("pantalla-perfil"),
@@ -710,10 +904,11 @@ function mostrarPantalla(nombre) {
     b.classList.toggle("activo", b.dataset.pantalla === nombre);
   }
   if (nombre === "hoy") {
-    pintarCarga(cargaHoy, true);
+    pintarSaludo();
+    pintarCargaHoy();
   }
-  if (nombre === "registro") {
-    pintarCarga(resumenSemana, false);
+  if (nombre === "cuerpo") {
+    mostrarCuerpo();
   }
   if (nombre === "biblioteca") {
     mostrarBiblioteca();

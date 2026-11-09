@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4f3f8" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0e0d13" media="(prefers-color-scheme: dark)">
   <title>Mi entreno</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -11,15 +13,20 @@
 
   <!-- ===== HOY ===== -->
   <section id="pantalla-hoy" hidden>
+    <p id="saludo" class="saludo"></p>
     <h1>¿Qué toca hoy?</h1>
 
-    <div class="tarjeta">
-      <h2>Músculos cargados</h2>
-      <div id="carga-hoy" class="chips"></div>
-    </div>
+    <button id="resumen-cuerpo" class="tarjeta tarjeta-boton" type="button">
+      <span class="tarjeta-cabecera">
+        <span class="titulo-tarjeta">Tu cuerpo hoy</span>
+        <span class="enlace">Ver cuerpo ›</span>
+      </span>
+      <span id="carga-hoy" class="chips"></span>
+    </button>
 
-    <p class="ayuda">Foco (opcional). Si no eliges, la app decide según tu carga.</p>
-    <div>
+    <h2>Foco <span class="opcional">opcional</span></h2>
+    <p class="ayuda">Si no eliges nada, la app decide según tu carga.</p>
+    <div class="focos">
       <button class="grupo" data-grupo="pierna">Pierna</button>
       <button class="grupo" data-grupo="tren superior">Tren superior</button>
       <button class="grupo" data-grupo="haltero">Haltero</button>
@@ -31,14 +38,98 @@
     <div id="propuesta"></div>
   </section>
 
+  <!-- ===== CUERPO ===== -->
+  <section id="pantalla-cuerpo" hidden>
+    <h1>Tu cuerpo</h1>
+    <p class="ayuda">Carga de los últimos 7 días. Toca un músculo para ver cuándo estará recuperado.</p>
+
+    <div class="tarjeta">
+      <div class="cuerpos">
+        <figure>
+          <svg class="figura" viewBox="0 0 200 400" role="img" aria-label="Cuerpo de frente">
+            <g class="base">
+              <ellipse cx="100" cy="32" rx="18" ry="22"/>
+              <rect x="91" y="50" width="18" height="16" rx="5"/>
+              <path d="M60 72 Q100 60 140 72 L142 120 Q138 165 132 200 L68 200 Q62 165 58 120 Z"/>
+              <rect x="38" y="136" width="18" height="70" rx="9"/>
+              <rect x="144" y="136" width="18" height="70" rx="9"/>
+              <circle cx="47" cy="216" r="9"/>
+              <circle cx="153" cy="216" r="9"/>
+              <path d="M68 196 L132 196 L136 226 L64 226 Z"/>
+              <rect x="71" y="300" width="24" height="76" rx="12"/>
+              <rect x="105" y="300" width="24" height="76" rx="12"/>
+              <ellipse cx="81" cy="384" rx="14" ry="7"/>
+              <ellipse cx="119" cy="384" rx="14" ry="7"/>
+            </g>
+            <g class="musculos">
+              <path data-musculo="pecho" d="M73 78 Q97 70 98 80 L98 108 Q84 115 71 104 Z"/>
+              <path data-musculo="pecho" d="M127 78 Q103 70 102 80 L102 108 Q116 115 129 104 Z"/>
+              <ellipse data-musculo="hombros" cx="62" cy="82" rx="14" ry="13"/>
+              <ellipse data-musculo="hombros" cx="138" cy="82" rx="14" ry="13"/>
+              <ellipse data-musculo="brazos" cx="50" cy="116" rx="10" ry="22"/>
+              <ellipse data-musculo="brazos" cx="150" cy="116" rx="10" ry="22"/>
+              <rect data-musculo="core" x="83" y="114" width="34" height="74" rx="12"/>
+              <ellipse data-musculo="cuadriceps" cx="84" cy="258" rx="16" ry="44"/>
+              <ellipse data-musculo="cuadriceps" cx="116" cy="258" rx="16" ry="44"/>
+            </g>
+            <path class="detalle" d="M100 118 V184 M86 138 H114 M86 162 H114"/>
+          </svg>
+          <figcaption>Delante</figcaption>
+        </figure>
+
+        <figure>
+          <svg class="figura" viewBox="0 0 200 400" role="img" aria-label="Cuerpo de espaldas">
+            <g class="base">
+              <ellipse cx="100" cy="32" rx="18" ry="22"/>
+              <rect x="91" y="50" width="18" height="16" rx="5"/>
+              <path d="M60 72 Q100 60 140 72 L142 120 Q138 165 132 200 L68 200 Q62 165 58 120 Z"/>
+              <rect x="38" y="136" width="18" height="70" rx="9"/>
+              <rect x="144" y="136" width="18" height="70" rx="9"/>
+              <circle cx="47" cy="216" r="9"/>
+              <circle cx="153" cy="216" r="9"/>
+              <path d="M68 196 L132 196 L136 226 L64 226 Z"/>
+              <rect x="71" y="300" width="24" height="76" rx="12"/>
+              <rect x="105" y="300" width="24" height="76" rx="12"/>
+              <ellipse cx="81" cy="384" rx="14" ry="7"/>
+              <ellipse cx="119" cy="384" rx="14" ry="7"/>
+            </g>
+            <g class="musculos">
+              <path data-musculo="espalda" d="M76 70 Q100 62 124 70 L136 100 Q130 140 113 152 L87 152 Q70 140 64 100 Z"/>
+              <ellipse data-musculo="hombros" cx="62" cy="82" rx="14" ry="13"/>
+              <ellipse data-musculo="hombros" cx="138" cy="82" rx="14" ry="13"/>
+              <ellipse data-musculo="brazos" cx="50" cy="116" rx="10" ry="22"/>
+              <ellipse data-musculo="brazos" cx="150" cy="116" rx="10" ry="22"/>
+              <rect data-musculo="lumbar" x="86" y="155" width="28" height="36" rx="10"/>
+              <ellipse data-musculo="gluteos" cx="86" cy="214" rx="17" ry="16"/>
+              <ellipse data-musculo="gluteos" cx="114" cy="214" rx="17" ry="16"/>
+              <ellipse data-musculo="isquios" cx="84" cy="266" rx="15" ry="36"/>
+              <ellipse data-musculo="isquios" cx="116" cy="266" rx="15" ry="36"/>
+            </g>
+            <path class="detalle" d="M100 76 V150"/>
+          </svg>
+          <figcaption>Detrás</figcaption>
+        </figure>
+      </div>
+
+      <div class="leyenda">
+        <span><i class="punto libre"></i>Libre</span>
+        <span><i class="punto baja"></i>Ligera</span>
+        <span><i class="punto media"></i>Media</span>
+        <span><i class="punto alta"></i>Alta</span>
+      </div>
+    </div>
+
+    <div id="detalle-musculo" class="tarjeta" hidden></div>
+
+    <div class="tarjeta">
+      <h2>Músculo a músculo</h2>
+      <ul id="barras-carga"></ul>
+    </div>
+  </section>
+
   <!-- ===== REGISTRO ===== -->
   <section id="pantalla-registro" hidden>
     <h1>Registro</h1>
-
-    <div class="tarjeta">
-      <h2>Carga muscular (7 días)</h2>
-      <div id="resumen-semana" class="chips"></div>
-    </div>
 
     <div class="tarjeta">
       <h2>Nuevo entreno</h2>
@@ -94,7 +185,7 @@
           <label>Movimiento
             <select id="wod-ejercicio"></select>
           </label>
-          <label>Reps
+          <label class="estrecho">Reps
             <input type="number" id="wod-reps" min="1" inputmode="numeric">
           </label>
         </div>
@@ -105,7 +196,7 @@
           <label>Resultado
             <input type="text" id="wod-resultado" placeholder="5 rondas, 9:42...">
           </label>
-          <label>Esfuerzo
+          <label class="estrecho">Esfuerzo
             <select id="wod-esfuerzo"></select>
           </label>
         </div>
@@ -139,14 +230,14 @@
     </label>
 
     <p id="contador-biblioteca" class="mensaje"></p>
-    <ul id="lista-biblioteca"></ul>
+    <ul id="lista-biblioteca" class="tarjeta lista-tarjeta"></ul>
   </section>
 
   <!-- ===== PERFIL ===== -->
   <section id="pantalla-perfil" hidden>
     <h1>Tu perfil</h1>
     <p id="perfil-bienvenida" class="ayuda" hidden>
-      Antes de empezar, dile a la app qué buscas. Lo puedes cambiar cuando quieras.
+      ¡Hola! Antes de empezar, cuéntale a la app qué buscas. Lo puedes cambiar cuando quieras.
     </p>
 
     <form id="form-perfil" class="tarjeta">
@@ -167,10 +258,26 @@
 </main>
 
 <nav>
-  <button class="nav-btn" data-pantalla="hoy">Hoy</button>
-  <button class="nav-btn" data-pantalla="registro">Registro</button>
-  <button class="nav-btn" data-pantalla="biblioteca">Biblioteca</button>
-  <button class="nav-btn" data-pantalla="perfil">Perfil</button>
+  <button class="nav-btn" data-pantalla="hoy">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg>
+    <span>Hoy</span>
+  </button>
+  <button class="nav-btn" data-pantalla="cuerpo">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.5" r="2.3"/><path d="M5 9l7 1.5L19 9M12 10.5V15M8.5 21.5L12 15l3.5 6.5"/></svg>
+    <span>Cuerpo</span>
+  </button>
+  <button class="nav-btn" data-pantalla="registro">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2.5"/><path d="M9 3v2.5h6V3M9 11h6M9 15h4"/></svg>
+    <span>Registro</span>
+  </button>
+  <button class="nav-btn" data-pantalla="biblioteca">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5zM5 19.5A1.5 1.5 0 0 0 6.5 21H19"/></svg>
+    <span>Biblioteca</span>
+  </button>
+  <button class="nav-btn" data-pantalla="perfil">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
+    <span>Perfil</span>
+  </button>
 </nav>
 
 <script src="ejercicios.js"></script>
