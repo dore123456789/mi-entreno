@@ -1,29 +1,5 @@
-// ---------- Biblioteca de ejercicios (la gestionas tú) ----------
-// Cada ejercicio tiene un id fijo: el registro guarda el id, no el nombre.
-
-const ejercicios = [
-  { id: "sentadilla", nombre: "Sentadilla", grupo: ["pierna"], video: "https://www.youtube.com/watch?v=QmZAiBqPvZw" },
-  { id: "zancadas", nombre: "Zancadas", grupo: ["pierna"] },
-  { id: "peso-muerto", nombre: "Peso muerto", grupo: ["pierna", "haltero"] },
-  { id: "arrancada", nombre: "Arrancada", grupo: ["haltero", "pierna", "tren superior"] },
-  { id: "envion", nombre: "Envión", grupo: ["haltero", "pierna", "tren superior"] },
-  { id: "dominadas", nombre: "Dominadas", grupo: ["tren superior"] },
-  { id: "flexiones", nombre: "Flexiones", grupo: ["tren superior"] },
-  { id: "press-militar", nombre: "Press militar", grupo: ["tren superior"] },
-  { id: "remo", nombre: "Remo", grupo: ["wod", "cardio"] },
-  { id: "burpee", nombre: "Burpee", grupo: ["wod", "cardio"] },
-  { id: "comba", nombre: "Comba", grupo: ["wod", "cardio"] },
-  { id: "thruster", nombre: "Thruster", grupo: ["wod", "pierna", "tren superior"] },
-];
-
-const porId = {};
-for (const e of ejercicios) {
-  porId[e.id] = e;
-}
-
-function nombreDe(id) {
-  return porId[id] ? porId[id].nombre : "Ejercicio retirado";
-}
+// ---------- Pantallas de la app ----------
+// Los ejercicios están en ejercicios.js y la lógica de entrenos en motor.js.
 
 // ---------- Datos guardados en el dispositivo ----------
 
@@ -55,6 +31,14 @@ let entrenos = datosEntrenos && Array.isArray(datosEntrenos.entrenos)
 const borradorGuardado = leerGuardado("borrador", []);
 let borrador = Array.isArray(borradorGuardado) ? borradorGuardado : [];
 
+// Perfil: { version, objetivo, cuidar: ["lumbar", ...] }. null = aún no configurado.
+let perfil = leerGuardado("perfil", null);
+if (!perfil || !OBJETIVOS[perfil.objetivo]) {
+  perfil = null;
+} else if (!Array.isArray(perfil.cuidar)) {
+  perfil.cuidar = [];
+}
+
 function guardarEntrenos() {
   return escribirGuardado("entrenos", { version: 1, entrenos: entrenos });
 }
@@ -63,40 +47,72 @@ function guardarBorrador() {
   return escribirGuardado("borrador", borrador);
 }
 
-// ---------- Generador ----------
+function guardarPerfil() {
+  return escribirGuardado("perfil", perfil);
+}
+
+// ---------- Piezas comunes ----------
 
 function filtrarPorGrupo(grupo) {
   return ejercicios.filter(e => e.grupo.includes(grupo));
 }
 
-function elegirAlAzar(lista, n) {
-  const copia = [...lista];
-  for (let i = copia.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copia[i], copia[j]] = [copia[j], copia[i]];
-  }
-  return copia.slice(0, n);
+function crearBotonMini(texto, accion) {
+  const boton = document.createElement("button");
+  boton.type = "button";
+  boton.className = "mini";
+  boton.textContent = texto;
+  boton.addEventListener("click", accion);
+  return boton;
 }
 
-function proponerEntrenamiento(gruposElegidos, cantidad) {
-  const elegidos = [];
+function crearTextoVacio(texto) {
+  const li = document.createElement("li");
+  li.className = "vacio-texto";
+  li.textContent = texto;
+  return li;
+}
 
-  for (const g of gruposElegidos) {
-    const opciones = filtrarPorGrupo(g).filter(e => !elegidos.includes(e));
-    if (opciones.length > 0) {
-      elegidos.push(elegirAlAzar(opciones, 1)[0]);
+function crearTarjeta(titulo) {
+  const tarjeta = document.createElement("div");
+  tarjeta.className = "tarjeta";
+  const h2 = document.createElement("h2");
+  h2.textContent = titulo;
+  tarjeta.appendChild(h2);
+  return tarjeta;
+}
+
+function crearParrafo(texto, clase) {
+  const p = document.createElement("p");
+  p.className = clase;
+  p.textContent = texto;
+  return p;
+}
+
+// Chips de carga muscular. soloCargados = true oculta los músculos descansados.
+function pintarCarga(contenedor, soloCargados) {
+  const fatiga = calcularFatiga(entrenos, new Date());
+  contenedor.textContent = "";
+  let alguno = false;
+
+  for (const m in MUSCULOS) {
+    const nivel = nivelCarga(fatiga[m]);
+    if (soloCargados && nivel === "baja") {
+      continue;
     }
+    alguno = true;
+    const chip = document.createElement("span");
+    chip.className = "chip carga-" + nivel;
+    chip.textContent = MUSCULOS[m] + " · " + nivel;
+    contenedor.appendChild(chip);
   }
 
-  const resto = ejercicios.filter(e =>
-    e.grupo.some(g => gruposElegidos.includes(g)) && !elegidos.includes(e)
-  );
-  const faltan = cantidad - elegidos.length;
-  if (faltan > 0) {
-    elegidos.push(...elegirAlAzar(resto, faltan));
+  if (!alguno) {
+    const texto = document.createElement("span");
+    texto.className = "vacio-texto";
+    texto.textContent = "Todo descansado: puedes ir a por todo.";
+    contenedor.appendChild(texto);
   }
-
-  return elegirAlAzar(elegidos, cantidad);
 }
 
 // ---------- Vídeo ----------
@@ -122,6 +138,7 @@ function crearBotonVideo(ejercicio, li) {
   }
 
   const boton = document.createElement("button");
+  boton.type = "button";
   boton.textContent = "vídeo";
   boton.className = "mini video";
   boton.addEventListener("click", () => {
@@ -147,89 +164,160 @@ function crearBotonVideo(ejercicio, li) {
 
 // ---------- Pantalla "Hoy" ----------
 
-const botonesGrupo = document.querySelectorAll(".grupo");
+const botonesFoco = document.querySelectorAll(".grupo");
 const botonProponer = document.getElementById("btn-proponer");
-const lista = document.getElementById("resultado");
-let gruposElegidos = [];
-let propuestaActual = [];
+const contenedorPropuesta = document.getElementById("propuesta");
+const cargaHoy = document.getElementById("carga-hoy");
 
-function mostrarMensaje(texto) {
-  lista.textContent = "";
-  const li = document.createElement("li");
-  li.className = "vacio-texto";
-  li.textContent = texto;
-  lista.appendChild(li);
+let focos = [];
+let propuesta = null;
+
+function datosMotor() {
+  return { perfil: perfil, focos: focos, entrenos: entrenos, hoy: new Date() };
 }
 
-function buscarSustituto(ejercicio) {
-  const comunes = ejercicio.grupo.filter(g => gruposElegidos.includes(g));
-  const base = comunes.length > 0 ? comunes : ejercicio.grupo;
+// Fila con nombre, detalle y botones "vídeo" y "cambiar".
+// alCambiar() debe devolver true si ha encontrado sustituto.
+function crearFilaPropuesta(ejercicio, titulo, detalle, alCambiar) {
+  const li = document.createElement("li");
+  li.className = "fila-ejercicio";
 
-  const candidatos = ejercicios.filter(e =>
-    e.grupo.some(g => base.includes(g)) && !propuestaActual.includes(e)
-  );
-  if (candidatos.length === 0) {
-    return null;
+  const info = document.createElement("div");
+  info.className = "info";
+  const nombre = document.createElement("span");
+  nombre.textContent = titulo;
+  const pequeno = document.createElement("small");
+  pequeno.textContent = detalle;
+  info.appendChild(nombre);
+  info.appendChild(pequeno);
+
+  const acciones = document.createElement("div");
+  acciones.className = "acciones";
+  const botonVideo = crearBotonVideo(ejercicio, li);
+  if (botonVideo) {
+    acciones.appendChild(botonVideo);
   }
-  return elegirAlAzar(candidatos, 1)[0];
+  const botonCambiar = crearBotonMini("cambiar", () => {
+    if (alCambiar()) {
+      mostrarPropuesta();
+    } else {
+      botonCambiar.textContent = "sin alternativas";
+      botonCambiar.disabled = true;
+    }
+  });
+  acciones.appendChild(botonCambiar);
+
+  li.appendChild(info);
+  li.appendChild(acciones);
+  return li;
 }
 
 function mostrarPropuesta() {
-  lista.textContent = "";
-  propuestaActual.forEach((ejercicio, i) => {
-    const li = document.createElement("li");
-    li.className = "fila-ejercicio";
+  contenedorPropuesta.textContent = "";
+  if (!propuesta) {
+    return;
+  }
 
-    const nombre = document.createElement("span");
-    nombre.textContent = ejercicio.nombre;
+  if (propuesta.fuerza.length === 0 && !propuesta.wod) {
+    const tarjeta = crearTarjeta("Hoy toca descanso");
+    tarjeta.appendChild(crearParrafo(
+      "Tus músculos están muy cargados. Mejor movilidad, estiramientos o un paseo suave.",
+      "ayuda"
+    ));
+    contenedorPropuesta.appendChild(tarjeta);
+    return;
+  }
 
-    const acciones = document.createElement("div");
-
-    const botonVideo = crearBotonVideo(ejercicio, li);
-    if (botonVideo) {
-      acciones.appendChild(botonVideo);
-    }
-
-    const boton = document.createElement("button");
-    boton.textContent = "cambiar";
-    boton.className = "mini";
-    boton.addEventListener("click", () => {
-      const sustituto = buscarSustituto(ejercicio);
-      if (sustituto === null) {
-        boton.textContent = "sin alternativas";
-        boton.disabled = true;
-        return;
-      }
-      propuestaActual[i] = sustituto;
-      mostrarPropuesta();
+  if (propuesta.fuerza.length > 0) {
+    const tarjeta = crearTarjeta("Fuerza");
+    const ul = document.createElement("ul");
+    propuesta.fuerza.forEach((f, i) => {
+      const e = porId[f.ejercicio];
+      ul.appendChild(crearFilaPropuesta(
+        e,
+        e.nombre,
+        f.series + "×" + f.reps + " · " + textoMusculos(e),
+        () => sustituirEnPropuesta(propuesta, datosMotor(), "fuerza", i)
+      ));
     });
-    acciones.appendChild(boton);
+    tarjeta.appendChild(ul);
+    if (propuesta.fuerza.length < HUECOS_FUERZA.length) {
+      tarjeta.appendChild(crearParrafo("Bloque más corto: hay músculos que necesitan descanso.", "ayuda"));
+    }
+    contenedorPropuesta.appendChild(tarjeta);
+  }
 
-    li.appendChild(nombre);
-    li.appendChild(acciones);
-    lista.appendChild(li);
-  });
+  if (propuesta.wod) {
+    const tarjeta = crearTarjeta("WOD · " + propuesta.wod.formato);
+    tarjeta.appendChild(crearParrafo(propuesta.wod.detalle, "ayuda"));
+    const ul = document.createElement("ul");
+    propuesta.wod.movimientos.forEach((mov, i) => {
+      const e = porId[mov.ejercicio];
+      ul.appendChild(crearFilaPropuesta(
+        e,
+        textoMovimiento(mov),
+        textoMusculos(e),
+        () => sustituirEnPropuesta(propuesta, datosMotor(), "wod", i)
+      ));
+    });
+    tarjeta.appendChild(ul);
+    contenedorPropuesta.appendChild(tarjeta);
+  }
+
+  const botonRegistrar = document.createElement("button");
+  botonRegistrar.className = "principal";
+  botonRegistrar.textContent = "Registrar este entreno";
+  botonRegistrar.addEventListener("click", cargarEnRegistro);
+  contenedorPropuesta.appendChild(botonRegistrar);
 }
 
-for (const boton of botonesGrupo) {
+// Pasa la propuesta al Registro: la fuerza va al borrador y el WOD queda
+// preparado en su formulario para que solo falte poner el resultado.
+function cargarEnRegistro() {
+  for (const f of propuesta.fuerza) {
+    borrador.push({
+      tipo: "fuerza",
+      ejercicio: f.ejercicio,
+      series: f.series,
+      reps: f.reps,
+      esfuerzo: null,
+    });
+  }
+  guardarBorrador();
+
+  if (propuesta.wod) {
+    wodFormato.value = propuesta.wod.formato;
+    wodDetalle.value = propuesta.wod.detalle;
+    wodMovs = propuesta.wod.movimientos.map(m => ({ ejercicio: m.ejercicio, reps: m.reps }));
+  }
+
+  regFecha.value = fechaISO(new Date());
+  mostrarPantalla("registro");
+  mostrarBorrador();
+  mostrarWodMovs();
+  mensajeReg(propuesta.wod
+    ? "Fuerza añadida. Cuando acabes, pon el resultado del WOD y pulsa “Añadir WOD al entreno”."
+    : "Fuerza añadida. Ajusta lo que hayas cambiado y guarda el entreno.");
+}
+
+for (const boton of botonesFoco) {
   boton.addEventListener("click", () => {
     const g = boton.dataset.grupo;
-    if (gruposElegidos.includes(g)) {
-      gruposElegidos = gruposElegidos.filter(x => x !== g);
+    if (focos.includes(g)) {
+      focos = focos.filter(x => x !== g);
     } else {
-      gruposElegidos.push(g);
+      focos.push(g);
     }
     boton.classList.toggle("activo");
   });
 }
 
 botonProponer.addEventListener("click", () => {
-  if (gruposElegidos.length === 0) {
-    propuestaActual = [];
-    mostrarMensaje("Elige al menos un grupo");
+  if (!perfil) {
+    mostrarPantalla("perfil");
     return;
   }
-  propuestaActual = proponerEntrenamiento(gruposElegidos, 5);
+  propuesta = proponerEntreno(datosMotor());
   mostrarPropuesta();
 });
 
@@ -241,7 +329,8 @@ const listaBiblioteca = document.getElementById("lista-biblioteca");
 
 function mostrarBiblioteca() {
   const filtro = filtroBiblioteca.value;
-  const visibles = filtro === "todos" ? ejercicios : filtrarPorGrupo(filtro);
+  const visibles = (filtro === "todos" ? [...ejercicios] : filtrarPorGrupo(filtro))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
 
   contadorBiblioteca.textContent = visibles.length + " ejercicios";
   listaBiblioteca.textContent = "";
@@ -254,10 +343,10 @@ function mostrarBiblioteca() {
     info.className = "info";
     const nombre = document.createElement("span");
     nombre.textContent = ejercicio.nombre;
-    const grupos = document.createElement("small");
-    grupos.textContent = ejercicio.grupo.join(", ");
+    const musculos = document.createElement("small");
+    musculos.textContent = textoMusculos(ejercicio);
     info.appendChild(nombre);
-    info.appendChild(grupos);
+    info.appendChild(musculos);
     li.appendChild(info);
 
     const botonVideo = crearBotonVideo(ejercicio, li);
@@ -300,12 +389,13 @@ const resumenSemana = document.getElementById("resumen-semana");
 
 let wodMovs = [];
 
-function rellenarSelectEjercicios(select) {
-  const ordenados = [...ejercicios].sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+function rellenarSelectEjercicios(select, soloWod) {
+  const lista = soloWod ? ejercicios.filter(e => e.wod) : ejercicios;
+  const ordenados = [...lista].sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
   for (const e of ordenados) {
     const opcion = document.createElement("option");
     opcion.value = e.id;
-    opcion.textContent = e.nombre;
+    opcion.textContent = e.nombre + (e.wod && e.wod.unidad ? " (" + e.wod.unidad + ")" : "");
     select.appendChild(opcion);
   }
 }
@@ -321,20 +411,6 @@ function rellenarSelectEsfuerzo(select) {
     opcion.textContent = p + "%";
     select.appendChild(opcion);
   }
-}
-
-// Fechas: se trabaja con texto "AAAA-MM-DD" en hora local.
-function dosCifras(n) {
-  return String(n).padStart(2, "0");
-}
-
-function fechaISO(d) {
-  return d.getFullYear() + "-" + dosCifras(d.getMonth() + 1) + "-" + dosCifras(d.getDate());
-}
-
-function fechaDesdeISO(texto) {
-  const [a, m, d] = texto.split("-").map(Number);
-  return new Date(a, m - 1, d);
 }
 
 function enteroPositivo(texto) {
@@ -354,28 +430,12 @@ function mensajeReg(texto, esError) {
 function describirBloque(b) {
   const esfuerzo = b.esfuerzo ? " · " + b.esfuerzo + "%" : "";
   if (b.tipo === "wod") {
-    const movs = b.movimientos.map(m => m.reps + " " + nombreDe(m.ejercicio)).join(" + ");
+    const movs = b.movimientos.map(textoMovimiento).join(" + ");
     const detalle = b.detalle ? " " + b.detalle : "";
     const resultado = b.resultado ? " → " + b.resultado : "";
     return "WOD " + b.formato + detalle + ": " + movs + resultado + esfuerzo;
   }
   return nombreDe(b.ejercicio) + " · " + b.series + "×" + b.reps + esfuerzo;
-}
-
-function crearBotonMini(texto, accion) {
-  const boton = document.createElement("button");
-  boton.type = "button";
-  boton.className = "mini";
-  boton.textContent = texto;
-  boton.addEventListener("click", accion);
-  return boton;
-}
-
-function crearTextoVacio(texto) {
-  const li = document.createElement("li");
-  li.className = "vacio-texto";
-  li.textContent = texto;
-  return li;
 }
 
 // --- Movimientos del WOD que se está preparando ---
@@ -386,7 +446,7 @@ function mostrarWodMovs() {
     const li = document.createElement("li");
     li.className = "bloque";
     const texto = document.createElement("span");
-    texto.textContent = mov.reps + " " + nombreDe(mov.ejercicio);
+    texto.textContent = textoMovimiento(mov);
     li.appendChild(texto);
     li.appendChild(crearBotonMini("quitar", () => {
       wodMovs.splice(i, 1);
@@ -509,7 +569,9 @@ btnGuardarEntreno.addEventListener("click", () => {
   guardarBorrador();
   mostrarBorrador();
   mostrarHistorial();
-  mostrarResumen();
+  pintarCarga(resumenSemana, false);
+  propuesta = null;
+  mostrarPropuesta();
   mensajeReg("Entreno guardado.");
 });
 
@@ -552,7 +614,7 @@ function mostrarHistorial() {
       entrenos = entrenos.filter(x => x.id !== entreno.id);
       guardarEntrenos();
       mostrarHistorial();
-      mostrarResumen();
+      pintarCarga(resumenSemana, false);
     }));
     li.appendChild(cabecera);
 
@@ -567,69 +629,68 @@ function mostrarHistorial() {
   }
 }
 
-// --- Resumen de los últimos 7 días ---
+// ---------- Pantalla "Perfil" ----------
 
-function gruposDeBloque(bloque) {
-  const grupos = new Set();
-  let ids;
-  if (bloque.tipo === "wod") {
-    grupos.add("wod");
-    ids = bloque.movimientos.map(m => m.ejercicio);
+const formPerfil = document.getElementById("form-perfil");
+const contObjetivos = document.getElementById("perfil-objetivos");
+const bienvenidaPerfil = document.getElementById("perfil-bienvenida");
+const mensajePerfil = document.getElementById("mensaje-perfil");
+
+function pintarPerfil() {
+  contObjetivos.textContent = "";
+  for (const clave in OBJETIVOS) {
+    const o = OBJETIVOS[clave];
+
+    const label = document.createElement("label");
+    label.className = "opcion";
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    radio.name = "objetivo";
+    radio.value = clave;
+    radio.checked = perfil ? perfil.objetivo === clave : clave === "general";
+
+    const texto = document.createElement("span");
+    const nombre = document.createElement("strong");
+    nombre.textContent = o.nombre;
+    const detalle = document.createElement("small");
+    detalle.textContent = o.principal[0] + "×" + o.principal[1] + " en básicos · WOD de "
+      + o.wodMin[0] + "-" + o.wodMin[1] + " min";
+    texto.appendChild(nombre);
+    texto.appendChild(detalle);
+
+    label.appendChild(radio);
+    label.appendChild(texto);
+    contObjetivos.appendChild(label);
+  }
+
+  for (const casilla of formPerfil.querySelectorAll('input[name="cuidar"]')) {
+    casilla.checked = perfil ? perfil.cuidar.includes(casilla.value) : false;
+  }
+  bienvenidaPerfil.hidden = perfil !== null;
+  mensajePerfil.textContent = "";
+}
+
+formPerfil.addEventListener("submit", (evento) => {
+  evento.preventDefault();
+
+  const elegido = formPerfil.querySelector('input[name="objetivo"]:checked');
+  const cuidar = [...formPerfil.querySelectorAll('input[name="cuidar"]:checked')].map(c => c.value);
+  const primeraVez = perfil === null;
+
+  perfil = { version: 1, objetivo: elegido.value, cuidar: cuidar };
+  if (!guardarPerfil()) {
+    mensajePerfil.textContent = "No se ha podido guardar en este navegador.";
+    return;
+  }
+
+  propuesta = null;
+  mostrarPropuesta();
+  if (primeraVez) {
+    mostrarPantalla("hoy");
   } else {
-    ids = [bloque.ejercicio];
+    mensajePerfil.textContent = "Perfil guardado.";
   }
-  for (const id of ids) {
-    const e = porId[id];
-    if (!e) {
-      continue;
-    }
-    for (const g of e.grupo) {
-      if (g !== "wod") {
-        grupos.add(g);
-      }
-    }
-  }
-  return grupos;
-}
-
-function mostrarResumen() {
-  const hoy = new Date();
-  const inicio = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 6);
-  const cuenta = { "pierna": 0, "tren superior": 0, "cardio": 0, "wod": 0, "haltero": 0 };
-
-  for (const entreno of entrenos) {
-    if (fechaDesdeISO(entreno.fecha) < inicio) {
-      continue;
-    }
-    for (const bloque of entreno.bloques) {
-      for (const g of gruposDeBloque(bloque)) {
-        if (g in cuenta) {
-          cuenta[g] += 1;
-        }
-      }
-    }
-  }
-
-  resumenSemana.textContent = "";
-  for (const g in cuenta) {
-    const chip = document.createElement("span");
-    chip.className = cuenta[g] === 0 ? "chip vacio" : "chip";
-    chip.textContent = g + " · " + cuenta[g];
-    resumenSemana.appendChild(chip);
-  }
-}
-
-// --- Arranque de la pantalla Registro ---
-
-rellenarSelectEjercicios(fuerzaEjercicio);
-rellenarSelectEjercicios(wodEjercicio);
-rellenarSelectEsfuerzo(fuerzaEsfuerzo);
-rellenarSelectEsfuerzo(wodEsfuerzo);
-regFecha.value = fechaISO(new Date());
-mostrarBorrador();
-mostrarWodMovs();
-mostrarHistorial();
-mostrarResumen();
+});
 
 // ---------- Navegación entre pantallas ----------
 
@@ -637,6 +698,7 @@ const pantallas = {
   hoy: document.getElementById("pantalla-hoy"),
   registro: document.getElementById("pantalla-registro"),
   biblioteca: document.getElementById("pantalla-biblioteca"),
+  perfil: document.getElementById("pantalla-perfil"),
 };
 const botonesNav = document.querySelectorAll(".nav-btn");
 
@@ -647,11 +709,17 @@ function mostrarPantalla(nombre) {
   for (const b of botonesNav) {
     b.classList.toggle("activo", b.dataset.pantalla === nombre);
   }
+  if (nombre === "hoy") {
+    pintarCarga(cargaHoy, true);
+  }
+  if (nombre === "registro") {
+    pintarCarga(resumenSemana, false);
+  }
   if (nombre === "biblioteca") {
     mostrarBiblioteca();
   }
-  if (nombre === "registro") {
-    mostrarResumen();
+  if (nombre === "perfil") {
+    pintarPerfil();
   }
   window.scrollTo(0, 0);
 }
@@ -659,3 +727,15 @@ function mostrarPantalla(nombre) {
 for (const b of botonesNav) {
   b.addEventListener("click", () => mostrarPantalla(b.dataset.pantalla));
 }
+
+// ---------- Arranque ----------
+
+rellenarSelectEjercicios(fuerzaEjercicio, false);
+rellenarSelectEjercicios(wodEjercicio, true);
+rellenarSelectEsfuerzo(fuerzaEsfuerzo);
+rellenarSelectEsfuerzo(wodEsfuerzo);
+regFecha.value = fechaISO(new Date());
+mostrarBorrador();
+mostrarWodMovs();
+mostrarHistorial();
+mostrarPantalla(perfil ? "hoy" : "perfil");

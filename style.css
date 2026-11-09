@@ -8,6 +8,7 @@
   --acento-texto: #ffffff;
   --oscuro: #1c1c1e;
   --error: #d93025;
+  --aviso: #b26a00;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -21,6 +22,7 @@
     --acento-texto: #0b1220;
     --oscuro: #f2f3f5;
     --error: #ff6b6b;
+    --aviso: #f0b44c;
   }
 }
 
@@ -128,10 +130,37 @@ label > input, label > select { margin-top: 4px; }
   border-radius: 999px;
 }
 .mini.video {
-  margin-right: 6px;
   color: var(--acento);
   border-color: var(--acento);
 }
+
+.acciones { display: flex; gap: 6px; flex-shrink: 0; }
+.info { flex: 1; min-width: 0; }
+
+.ayuda { margin: 4px 0 8px; font-size: 14px; color: var(--suave); }
+
+/* ---- Perfil ---- */
+
+.opcion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0;
+  padding: 12px;
+  font-size: 15px;
+  color: var(--texto);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.opcion input { width: auto; margin: 0; flex-shrink: 0; }
+.opcion small { display: block; font-size: 13px; color: var(--suave); }
+
+/* ---- Carga muscular ---- */
+
+.chip.carga-alta { color: var(--error); border-color: var(--error); font-weight: 600; }
+.chip.carga-media { color: var(--aviso); border-color: var(--aviso); }
+.chip.carga-baja { opacity: 0.55; }
 
 /* ---- Listas de ejercicios (Hoy y Biblioteca) ---- */
 

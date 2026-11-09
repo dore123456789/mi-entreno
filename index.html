@@ -10,21 +10,25 @@
 <main>
 
   <!-- ===== HOY ===== -->
-  <section id="pantalla-hoy">
-    <h1>¿Qué te apetece hoy?</h1>
+  <section id="pantalla-hoy" hidden>
+    <h1>¿Qué toca hoy?</h1>
 
+    <div class="tarjeta">
+      <h2>Músculos cargados</h2>
+      <div id="carga-hoy" class="chips"></div>
+    </div>
+
+    <p class="ayuda">Foco (opcional). Si no eliges, la app decide según tu carga.</p>
     <div>
       <button class="grupo" data-grupo="pierna">Pierna</button>
       <button class="grupo" data-grupo="tren superior">Tren superior</button>
-      <button class="grupo" data-grupo="cardio">Cardio</button>
-      <button class="grupo" data-grupo="wod">WOD</button>
       <button class="grupo" data-grupo="haltero">Haltero</button>
+      <button class="grupo" data-grupo="core">Core</button>
     </div>
 
     <button id="btn-proponer" class="principal">Proponer entrenamiento</button>
 
-    <h2>Tu entrenamiento</h2>
-    <ul id="resultado"></ul>
+    <div id="propuesta"></div>
   </section>
 
   <!-- ===== REGISTRO ===== -->
@@ -32,7 +36,7 @@
     <h1>Registro</h1>
 
     <div class="tarjeta">
-      <h2>Últimos 7 días</h2>
+      <h2>Carga muscular (7 días)</h2>
       <div id="resumen-semana" class="chips"></div>
     </div>
 
@@ -130,6 +134,7 @@
         <option value="cardio">Cardio</option>
         <option value="wod">WOD</option>
         <option value="haltero">Haltero</option>
+        <option value="core">Core</option>
       </select>
     </label>
 
@@ -137,14 +142,39 @@
     <ul id="lista-biblioteca"></ul>
   </section>
 
+  <!-- ===== PERFIL ===== -->
+  <section id="pantalla-perfil" hidden>
+    <h1>Tu perfil</h1>
+    <p id="perfil-bienvenida" class="ayuda" hidden>
+      Antes de empezar, dile a la app qué buscas. Lo puedes cambiar cuando quieras.
+    </p>
+
+    <form id="form-perfil" class="tarjeta">
+      <h2>Objetivo</h2>
+      <div id="perfil-objetivos"></div>
+
+      <h2>Zonas a cuidar</h2>
+      <p class="ayuda">No se te propondrán ejercicios que las carguen.</p>
+      <label class="opcion"><input type="checkbox" name="cuidar" value="lumbar"> Zona lumbar</label>
+      <label class="opcion"><input type="checkbox" name="cuidar" value="rodilla"> Rodillas</label>
+      <label class="opcion"><input type="checkbox" name="cuidar" value="hombro"> Hombros</label>
+
+      <button type="submit" class="principal">Guardar perfil</button>
+      <p id="mensaje-perfil" class="mensaje" role="status"></p>
+    </form>
+  </section>
+
 </main>
 
 <nav>
-  <button class="nav-btn activo" data-pantalla="hoy">Hoy</button>
+  <button class="nav-btn" data-pantalla="hoy">Hoy</button>
   <button class="nav-btn" data-pantalla="registro">Registro</button>
   <button class="nav-btn" data-pantalla="biblioteca">Biblioteca</button>
+  <button class="nav-btn" data-pantalla="perfil">Perfil</button>
 </nav>
 
+<script src="ejercicios.js"></script>
+<script src="motor.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
