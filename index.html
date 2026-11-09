@@ -6,6 +6,13 @@
   <meta name="theme-color" content="#f4f3f8" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0e0d13" media="(prefers-color-scheme: dark)">
   <title>Mi entreno</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="iconos/icono-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="iconos/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Mi entreno">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -284,6 +291,20 @@
       <button type="submit" class="principal">Guardar y crear mi plan</button>
       <p id="mensaje-perfil" class="mensaje" role="status"></p>
     </form>
+
+    <div class="tarjeta">
+      <h2>Copia de seguridad</h2>
+      <p class="ayuda">
+        Tus datos solo están en este móvil. Descarga una copia de vez en cuando
+        (por ejemplo en iCloud Drive) para no perderlos si cambias de móvil.
+      </p>
+      <div class="botones-dobles">
+        <button type="button" id="btn-exportar" class="secundario">Descargar copia</button>
+        <button type="button" id="btn-importar" class="secundario">Restaurar copia</button>
+      </div>
+      <input type="file" id="archivo-copia" accept="application/json,.json" hidden>
+      <p id="mensaje-copia" class="mensaje" role="status"></p>
+    </div>
   </section>
 
 </main>

@@ -1890,6 +1890,94 @@ formPerfil.addEventListener("submit", (evento) => {
   }
 });
 
+// ---------- Copia de seguridad ----------
+
+const mensajeCopia = document.getElementById("mensaje-copia");
+const archivoCopia = document.getElementById("archivo-copia");
+
+function avisoCopia(texto, esError) {
+  mensajeCopia.textContent = texto;
+  mensajeCopia.classList.toggle("error", Boolean(esError));
+}
+
+// Un archivo .json con todo. En el móvil se abre el menú de compartir
+// (Guardar en Archivos, iCloud Drive, AirDrop...); en el ordenador se descarga.
+function exportarCopia() {
+  const datos = {
+    app: "mi-entreno",
+    version: 1,
+    creada: new Date().toISOString(),
+    perfil: perfil,
+    plan: plan,
+    entrenos: entrenos,
+    borrador: borrador,
+  };
+  const nombre = "mi-entreno-" + fechaISO(new Date()) + ".json";
+  const archivo = new File([JSON.stringify(datos)], nombre, { type: "application/json" });
+  const esMovil = /iPhone|iPad|Android/i.test(navigator.userAgent);
+
+  if (esMovil && navigator.canShare && navigator.canShare({ files: [archivo] })) {
+    navigator.share({ files: [archivo], title: "Copia de Mi entreno" }).catch(() => {});
+  } else {
+    const enlace = document.createElement("a");
+    enlace.href = URL.createObjectURL(archivo);
+    enlace.download = nombre;
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+    setTimeout(() => URL.revokeObjectURL(enlace.href), 2000);
+  }
+  avisoCopia("Copia creada con " + entrenos.length + " entrenos.");
+}
+
+async function importarCopia(archivo) {
+  let datos;
+  try {
+    datos = JSON.parse(await archivo.text());
+  } catch {
+    avisoCopia("Ese archivo no es una copia válida.", true);
+    return;
+  }
+  if (!datos || datos.app !== "mi-entreno" || !Array.isArray(datos.entrenos)) {
+    avisoCopia("Ese archivo no es una copia de Mi entreno.", true);
+    return;
+  }
+
+  const fecha = datos.creada ? new Date(datos.creada).toLocaleDateString("es-ES") : "fecha desconocida";
+  const pregunta = "La copia es del " + fecha + " y tiene " + datos.entrenos.length + " entrenos.\n"
+    + "Sustituirá los datos de este móvil. ¿Seguir?";
+  if (!confirm(pregunta)) {
+    return;
+  }
+
+  entrenos = datos.entrenos;
+  borrador = Array.isArray(datos.borrador) ? datos.borrador : [];
+  perfil = datos.perfil && OBJETIVOS[datos.perfil.objetivo] ? datos.perfil : null;
+  if (perfil && !Array.isArray(perfil.cuidar)) perfil.cuidar = [];
+  plan = datos.plan && datos.plan.version === 1 && datos.plan.sesiones ? datos.plan : null;
+
+  const ok = guardarEntrenos() && guardarBorrador() && escribirGuardado("perfil", perfil) && escribirGuardado("plan", plan);
+  if (!ok) {
+    avisoCopia("No se ha podido guardar en este navegador.", true);
+    return;
+  }
+
+  propuesta = null;
+  mostrarPropuesta();
+  mostrarBorrador();
+  mostrarHistorial();
+  mostrarPantalla(perfil ? "hoy" : "perfil");
+  mostrarToast("Copia restaurada: " + entrenos.length + " entrenos");
+}
+
+document.getElementById("btn-exportar").addEventListener("click", exportarCopia);
+document.getElementById("btn-importar").addEventListener("click", () => archivoCopia.click());
+archivoCopia.addEventListener("change", () => {
+  const archivo = archivoCopia.files[0];
+  archivoCopia.value = "";
+  if (archivo) importarCopia(archivo);
+});
+
 // ---------- Navegación entre pantallas ----------
 
 const pantallas = {
@@ -1947,3 +2035,8 @@ mostrarBorrador();
 mostrarWodMovs();
 mostrarHistorial();
 mostrarPantalla(perfil ? "hoy" : "perfil");
+
+// Modo sin conexión (solo cuando la app se sirve desde una web, no como archivo).
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
