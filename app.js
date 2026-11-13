@@ -2104,5 +2104,5 @@ appLista = true;
 
 // Modo sin conexión (solo cuando la app se sirve desde una web, no como archivo).
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
-  navigator.serviceWorker.register("sw.js").catch(() => {});
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(() => {});
 }

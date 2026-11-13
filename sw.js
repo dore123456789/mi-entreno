@@ -5,7 +5,7 @@
 //  - Lector de fotos (cdn.jsdelivr.net): primero la copia guardada, porque
 //    son archivos grandes que no cambian.
 
-const CACHE = "mi-entreno-v1";
+const CACHE = "mi-entreno-v2";
 
 const ARCHIVOS = [
   "./",
@@ -60,7 +60,10 @@ self.addEventListener("fetch", (evento) => {
   // Archivos de la app: internet primero, copia si no hay conexión.
   // Si internet tarda más de 3 s (poca cobertura en el box), también la copia.
   if (url.origin === self.location.origin) {
-    const deInternet = fetch(peticion).then((respuesta) => {
+    // cache: "no-cache" → pregunta siempre al servidor si hay versión nueva
+    // (si no la hay, la respuesta es mínima). Así las actualizaciones llegan
+    // al momento y no 10 minutos después.
+    const deInternet = fetch(peticion, { cache: "no-cache" }).then((respuesta) => {
       if (respuesta.ok) {
         const copia = respuesta.clone();
         caches.open(CACHE).then((c) => c.put(peticion, copia));
