@@ -127,7 +127,56 @@ const ejercicios = [
     musculos: [], secundarios: ["core"], cuidado: [] },
   { id: "tecnica-palo", nombre: "Técnica de arrancada con palo", grupo: ["haltero"], tipo: "ligero",
     musculos: [], secundarios: ["hombros"], cuidado: [] },
+
+  // --- Nuevos aprobados en la revisión de noviembre ---
+  { id: "handstand-push-up", nombre: "Flexiones en pino (HSPU)", grupo: ["tren superior"], tipo: "gimnastico",
+    musculos: ["hombros", "brazos"], secundarios: ["core"], cuidado: ["hombro"], wod: { reps: 5 } },
+  { id: "muscle-up", nombre: "Muscle-up", grupo: ["tren superior"], tipo: "gimnastico",
+    musculos: ["espalda", "pecho", "brazos"], secundarios: ["hombros", "core"], cuidado: ["hombro"], wod: { reps: 3 } },
+  { id: "subida-cuerda", nombre: "Subida a la cuerda", grupo: ["tren superior"], tipo: "gimnastico",
+    musculos: ["espalda", "brazos"], secundarios: ["core"], cuidado: ["hombro"], wod: { reps: 2 } },
+  { id: "sentadilla-overhead", nombre: "Sentadilla overhead", grupo: ["haltero", "pierna"], tipo: "haltero",
+    musculos: ["cuadriceps", "gluteos", "hombros"], secundarios: ["core", "espalda"], cuidado: ["hombro", "rodilla"], wod: { reps: 10 } },
+  { id: "devil-press", nombre: "Devil press", grupo: ["haltero"], tipo: "metabolico",
+    musculos: ["hombros", "gluteos"], secundarios: ["isquios", "pecho", "core"], cuidado: ["lumbar", "hombro"], wod: { reps: 8 } },
+  { id: "cargada-kettlebell", nombre: "Cargada con kettlebell", grupo: ["haltero"], tipo: "metabolico",
+    musculos: ["gluteos", "espalda"], secundarios: ["isquios", "brazos"], cuidado: [], wod: { reps: 12 } },
+  { id: "plancha", nombre: "Plancha", grupo: ["core"], tipo: "ligero",
+    musculos: ["core"], secundarios: ["hombros"], cuidado: [], esquemaFijo: [3, 30], unidadReps: "s" },
+  { id: "paseo-granjero", nombre: "Paseo del granjero", grupo: ["core"], tipo: "metabolico",
+    musculos: ["core"], secundarios: ["brazos", "espalda"], cuidado: [], wod: { reps: 40, unidad: "m" } },
+  { id: "ski-erg", nombre: "SkiErg", grupo: ["cardio"], tipo: "metabolico",
+    musculos: [], secundarios: ["espalda", "brazos", "core"], cuidado: [], wod: { reps: 15, unidad: "cal" } },
 ];
+
+// ---------- Vídeos ----------
+// Un vídeo de YouTube por ejercicio (id del vídeo). Todos comprobados: existen
+// y YouTube permite verlos dentro de la app. La mayoría son del canal oficial
+// de CrossFit; el resto de Catalyst Athletics, Concept2, Rogue, fisioterapeutas
+// y entrenadores.
+const VIDEOS = {
+  "sentadilla": "QmZAiBqPvZw", "sentadilla-frontal": "m4ytaCJZpl0", "sentadilla-goblet": "OwAh0sBFpec",
+  "sentadilla-aire": "C_VtOYc6j5c", "sentadilla-overhead": "RD_vUnqwqqI", "zancadas": "L8fvypPrzzs",
+  "subidas-cajon": "tCZ5yde3F2U", "wall-ball": "EqjGKsiIMCE", "peso-muerto": "op9kVnSso6Q",
+  "peso-muerto-rumano": "zr6XNqmOhrY", "hip-thrust": "NDlzVV-UCHE", "swing-kettlebell": "vdezTMulJ-k",
+  "press-banca": "XSza8hVTlmM", "press-militar": "xe19t2_6yis", "push-press": "X6-DMh-t4nQ",
+  "press-mancuernas": "AqzDJHxynwo", "flexiones": "_l3ySVKYVJ8", "fondos": "Vt0lO4jpIDo",
+  "handstand-push-up": "hvoQiF0kBI8", "dominadas": "r45xLlH7r_M", "muscle-up": "vJTJFc2wmk4",
+  "subida-cuerda": "qFE7pgOrj5w", "remo-barra": "VIGO-g8fHdM", "remo-mancuerna": "S_kOe9mOLlg",
+  "remo-anillas": "xhlReCpAE9k", "curl-biceps": "Nr-sPLLOIwE", "triceps-banda": "qjPN6ElNqpc",
+  "arrancada": "9xQp2sldyts", "envion": "jiYPejuiNck", "cargada": "GVt4uQ0sDJE",
+  "thruster": "L219ltL15zk", "arrancada-mancuerna": "R0mhHuVrLHA", "devil-press": "cBGQrgovLFM",
+  "cargada-kettlebell": "SOkqtf91jbU", "toes-to-bar": "CaDbc9ft-Ac", "abdominales": "_HDZODOx7Zw",
+  "pallof-press": "Qk_Xt_K7hjA", "plancha": "yeKv5oX_6GY", "paseo-granjero": "MH8id-EaoPA",
+  "monster-walk": "hE4UsbLMjC8", "remo": "S7HEm-fd534", "bici": "mY9ihujdkc0",
+  "ski-erg": "9Jqcxr8Iq5E", "carrera": "sScNDZu2MWk", "comba": "-tF3hUsPZAI",
+  "burpee": "TU8QYVW0gDU", "saltos-cajon": "52r_Ul5k03g",
+};
+for (const e of ejercicios) {
+  if (!e.video && VIDEOS[e.id]) {
+    e.video = "https://www.youtube.com/watch?v=" + VIDEOS[e.id];
+  }
+}
 
 // ---------- Movilidad (para calentar y para días de descanso) ----------
 // zonas: músculos que prepara. dosis: lo que se hace.

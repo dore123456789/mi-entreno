@@ -412,7 +412,7 @@ function pintarFuerza() {
       i + 1,
       e,
       e.nombre,
-      f.series + "×" + f.reps + (f.esfuerzoObjetivo ? " · ≈" + f.esfuerzoObjetivo + "%" : ""),
+      textoEsquema(f) + (f.esfuerzoObjetivo ? " · ≈" + f.esfuerzoObjetivo + "%" : ""),
       (f.delPlan ? "principal del plan · " : "") + textoMusculos(e),
       () => sustituirEnPropuesta(propuesta, datosMotor(), "fuerza", i)
     ));
@@ -440,7 +440,7 @@ function pintarLigero() {
       i + 1,
       e,
       e.nombre,
-      l.series + "×" + l.reps,
+      textoEsquema(l),
       textoMusculos(e),
       () => sustituirEnPropuesta(propuesta, datosMotor(), "ligero", i)
     ));
@@ -800,7 +800,7 @@ function abrirHoja() {
   if (propuesta.fuerza.length > 0) {
     anadirTitulo("Fuerza");
     for (const f of propuesta.fuerza) {
-      hojaBloques.appendChild(crearTarjetaEjercicio(f, f.series + "×" + f.reps));
+      hojaBloques.appendChild(crearTarjetaEjercicio(f, textoEsquema(f)));
     }
   }
   if (propuesta.ligero.length > 0) {

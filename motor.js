@@ -200,8 +200,15 @@ function candidatosWod(posicion, ctx, usados) {
   return preferidos.length > 0 ? preferidos : base;
 }
 
+// Series × reps. Algunos ejercicios tienen el suyo propio (la plancha va en segundos).
 function esquemaDe(objetivo, e) {
-  return OBJETIVOS[objetivo][e.tipo];
+  return e.esquemaFijo || OBJETIVOS[objetivo][e.tipo];
+}
+
+// "3×30 s", "5×5"…
+function textoEsquema(f) {
+  const e = porId[f.ejercicio];
+  return f.series + "×" + f.reps + (e && e.unidadReps ? " " + e.unidadReps : "");
 }
 
 function repsWod(e, factor) {
