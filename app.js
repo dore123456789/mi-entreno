@@ -64,6 +64,41 @@ function guardarPerfil() {
 
 // ---------- Piezas comunes ----------
 
+// Ventana de confirmación propia. Devuelve una promesa: true si se pulsa
+// el botón de seguir, false si se cancela. (La del navegador, confirm(),
+// no siempre se muestra: en algunos visores se cancela sola.)
+function confirmar(texto, textoSi, peligro) {
+  const dialogo = document.getElementById("dialogo");
+  const si = document.getElementById("dialogo-si");
+  const no = document.getElementById("dialogo-no");
+  document.getElementById("dialogo-texto").textContent = texto;
+  si.textContent = textoSi || "Seguir";
+  si.classList.toggle("peligro", Boolean(peligro));
+  dialogo.hidden = false;
+  si.focus();
+  return new Promise((resolver) => {
+    const cerrar = (respuesta) => {
+      dialogo.hidden = true;
+      si.onclick = no.onclick = dialogo.onclick = null;
+      resolver(respuesta);
+    };
+    si.onclick = () => cerrar(true);
+    no.onclick = () => cerrar(false);
+    // Tocar fuera de la caja también cancela.
+    dialogo.onclick = (e) => { if (e.target === dialogo) cerrar(false); };
+  });
+}
+
+// Pequeña animación de "actualizado" sobre la parte que ha cambiado.
+// No se usa mientras la app arranca, para que no parpadee todo al abrirla.
+let appLista = false;
+function refrescar(el) {
+  if (!appLista || !el) return;
+  el.classList.remove("refresco");
+  void el.offsetWidth; // fuerza a reiniciar la animación si ya estaba puesta
+  el.classList.add("refresco");
+}
+
 function filtrarPorGrupo(grupo) {
   return ejercicios.filter(e => e.grupo.includes(grupo));
 }
@@ -440,6 +475,7 @@ function pintarWod() {
 }
 
 function mostrarPropuesta() {
+  refrescar(contenedorPropuesta);
   contenedorPropuesta.textContent = "";
   if (!propuesta) {
     return;
@@ -844,6 +880,7 @@ function crearBloqueFoto() {
       detalles.hidden = false;
       const clase = leerClase(texto);
       estado.textContent = rellenarClase(clase);
+      refrescar(hojaBloques);
     } catch (err) {
       estado.classList.add("error");
       estado.textContent = err.message || "No se ha podido leer la imagen.";
@@ -1052,10 +1089,16 @@ function guardarDesdeHoja() {
 document.getElementById("hoja-cancelar").addEventListener("click", cerrarHoja);
 document.getElementById("hoja-guardar-btn").addEventListener("click", guardarDesdeHoja);
 document.getElementById("hoja-mas-ejercicio").addEventListener("click", () => {
-  hojaBloques.appendChild(crearTarjetaEjercicio(null));
+  const tarjeta = crearTarjetaEjercicio(null);
+  hojaBloques.appendChild(tarjeta);
+  refrescar(tarjeta);
+  tarjeta.scrollIntoView({ behavior: "smooth", block: "center" });
 });
 document.getElementById("hoja-mas-wod").addEventListener("click", () => {
-  hojaBloques.appendChild(crearTarjetaWodHoja(null));
+  const tarjeta = crearTarjetaWodHoja(null);
+  hojaBloques.appendChild(tarjeta);
+  refrescar(tarjeta);
+  tarjeta.scrollIntoView({ behavior: "smooth", block: "center" });
 });
 
 for (const boton of botonesFoco) {
@@ -1231,10 +1274,10 @@ function pintarPlan() {
 
   const nav = document.createElement("div");
   nav.className = "semana-nav";
-  const anterior = crearBoton("‹", "flecha", () => { semanaVista--; pintarPlan(); });
+  const anterior = crearBoton("‹", "flecha", () => { semanaVista--; pintarPlan(); refrescar(contenidoPlan); });
   anterior.disabled = semanaVista === 0;
   anterior.setAttribute("aria-label", "Semana anterior");
-  const siguiente = crearBoton("›", "flecha", () => { semanaVista++; pintarPlan(); });
+  const siguiente = crearBoton("›", "flecha", () => { semanaVista++; pintarPlan(); refrescar(contenidoPlan); });
   siguiente.disabled = semanaVista === plan.semanas - 1;
   siguiente.setAttribute("aria-label", "Semana siguiente");
   const titulo = document.createElement("h2");
@@ -1363,6 +1406,7 @@ function ejerciciosRecientes(musculo) {
 function elegirMusculo(musculo) {
   musculoElegido = musculoElegido === musculo ? null : musculo;
   mostrarCuerpo();
+  refrescar(detalleMusculo);
   if (musculoElegido) {
     detalleMusculo.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
@@ -1579,6 +1623,7 @@ function describirBloque(b) {
 // --- Movimientos del WOD que se está preparando ---
 
 function mostrarWodMovs() {
+  refrescar(listaWodMovs);
   listaWodMovs.textContent = "";
   wodMovs.forEach((mov, i) => {
     const li = document.createElement("li");
@@ -1609,6 +1654,7 @@ btnWodMov.addEventListener("click", () => {
 // --- Borrador del entreno actual ---
 
 function mostrarBorrador() {
+  refrescar(listaBorrador);
   listaBorrador.textContent = "";
   if (borrador.length === 0) {
     listaBorrador.appendChild(crearTextoVacio("Todavía no has añadido nada."));
@@ -1722,6 +1768,7 @@ btnGuardarEntreno.addEventListener("click", () => {
 // --- Historial ---
 
 function mostrarHistorial() {
+  refrescar(listaHistorial);
   listaHistorial.textContent = "";
   if (entrenos.length === 0) {
     listaHistorial.appendChild(crearTextoVacio("Aún no hay entrenos registrados."));
@@ -1751,13 +1798,14 @@ function mostrarHistorial() {
     titulo.appendChild(etiqueta);
 
     cabecera.appendChild(titulo);
-    cabecera.appendChild(crearBotonMini("borrar", () => {
-      if (!confirm("¿Borrar este entreno?")) {
+    cabecera.appendChild(crearBotonMini("borrar", async () => {
+      if (!await confirmar("¿Borrar este entreno? No se puede deshacer.", "Borrar", true)) {
         return;
       }
       entrenos = entrenos.filter(x => x.id !== entreno.id);
       guardarEntrenos();
       mostrarHistorial();
+      mostrarToast("Entreno borrado");
     }));
     li.appendChild(cabecera);
 
@@ -1845,7 +1893,12 @@ function mismosDatosDePlan(a, b) {
     && JSON.stringify([...a.cuidar].sort()) === JSON.stringify([...b.cuidar].sort());
 }
 
-formPerfil.addEventListener("submit", (evento) => {
+// Al tocar una opción del perfil, esa opción hace un pequeño "refresh".
+formPerfil.addEventListener("change", (evento) => {
+  refrescar(evento.target.closest("label"));
+});
+
+formPerfil.addEventListener("submit", async (evento) => {
   evento.preventDefault();
 
   const elegido = formPerfil.querySelector('input[name="objetivo"]:checked');
@@ -1856,6 +1909,8 @@ formPerfil.addEventListener("submit", (evento) => {
   if (dias.length < 2 || dias.length > 6) {
     mensajePerfil.textContent = "Elige entre 2 y 6 días de entreno.";
     mensajePerfil.classList.add("error");
+    refrescar(contDias);
+    contDias.scrollIntoView({ behavior: "smooth", block: "center" });
     return;
   }
 
@@ -1864,7 +1919,10 @@ formPerfil.addEventListener("submit", (evento) => {
   // Si cambia algo que afecta al plan y ya había uno, se confirma antes de rehacerlo.
   const hayQueRehacer = !plan || !mismosDatosDePlan(perfil, nuevo);
   if (plan && hayQueRehacer
-      && !confirm("Se creará un plan nuevo empezando esta semana. Tu historial no se borra. ¿Seguir?")) {
+      && !await confirmar("Se creará un plan nuevo empezando esta semana.\nTu historial no se borra.", "Crear plan nuevo")) {
+    mensajePerfil.classList.remove("error");
+    mensajePerfil.textContent = "No se ha guardado nada. Tu plan sigue igual.";
+    refrescar(mensajePerfil);
     return;
   }
 
@@ -1887,6 +1945,8 @@ formPerfil.addEventListener("submit", (evento) => {
   } else {
     mensajePerfil.classList.remove("error");
     mensajePerfil.textContent = "Perfil guardado. Tu plan sigue igual.";
+    refrescar(formPerfil);
+    mostrarToast("Perfil guardado ✓");
   }
 });
 
@@ -1946,7 +2006,7 @@ async function importarCopia(archivo) {
   const fecha = datos.creada ? new Date(datos.creada).toLocaleDateString("es-ES") : "fecha desconocida";
   const pregunta = "La copia es del " + fecha + " y tiene " + datos.entrenos.length + " entrenos.\n"
     + "Sustituirá los datos de este móvil. ¿Seguir?";
-  if (!confirm(pregunta)) {
+  if (!await confirmar(pregunta, "Restaurar")) {
     return;
   }
 
@@ -1994,6 +2054,11 @@ function mostrarPantalla(nombre) {
   for (const clave in pantallas) {
     pantallas[clave].hidden = clave !== nombre;
   }
+  // Entrada suave de la pantalla nueva.
+  const pantalla = pantallas[nombre];
+  pantalla.classList.remove("entrando");
+  void pantalla.offsetWidth;
+  pantalla.classList.add("entrando");
   for (const b of botonesNav) {
     b.classList.toggle("activo", b.dataset.pantalla === nombre);
   }
@@ -2035,6 +2100,7 @@ mostrarBorrador();
 mostrarWodMovs();
 mostrarHistorial();
 mostrarPantalla(perfil ? "hoy" : "perfil");
+appLista = true;
 
 // Modo sin conexión (solo cuando la app se sirve desde una web, no como archivo).
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {

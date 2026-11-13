@@ -369,6 +369,17 @@
 
 <div id="toast" class="toast" role="status" hidden></div>
 
+<!-- Ventana de confirmación propia (sustituye a la del navegador) -->
+<div id="dialogo" class="dialogo" role="alertdialog" aria-modal="true" aria-labelledby="dialogo-texto" hidden>
+  <div class="dialogo-caja">
+    <p id="dialogo-texto"></p>
+    <div class="botones-dobles">
+      <button type="button" id="dialogo-no" class="secundario">Cancelar</button>
+      <button type="button" id="dialogo-si" class="principal">Seguir</button>
+    </div>
+  </div>
+</div>
+
 <script src="ejercicios.js"></script>
 <script src="motor.js"></script>
 <script src="plan.js"></script>
