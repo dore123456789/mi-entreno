@@ -201,25 +201,34 @@ function crearBotonVideo(ejercicio, li) {
 
   const boton = document.createElement("button");
   boton.type = "button";
-  boton.textContent = "vídeo";
+  boton.textContent = "▶ Ver";
   boton.className = "mini video";
+  boton.setAttribute("aria-label", "Ver vídeo de " + ejercicio.nombre);
+  boton.setAttribute("aria-expanded", "false");
   boton.addEventListener("click", () => {
     const abierto = li.querySelector(".contenedor-video");
     if (abierto) {
       abierto.remove();
+      boton.textContent = "▶ Ver";
+      boton.setAttribute("aria-expanded", "false");
       return;
     }
     const contenedor = document.createElement("div");
     contenedor.className = "contenedor-video";
 
     const iframe = document.createElement("iframe");
-    iframe.src = "https://www.youtube-nocookie.com/embed/" + idVideo + "?playsinline=1";
+    iframe.src = "https://www.youtube-nocookie.com/embed/" + idVideo + "?playsinline=1&rel=0";
     iframe.title = "Vídeo de " + ejercicio.nombre;
     iframe.allowFullscreen = true;
+    iframe.setAttribute("allow", "autoplay; encrypted-media; picture-in-picture; fullscreen");
     iframe.referrerPolicy = "strict-origin-when-cross-origin";
 
     contenedor.appendChild(iframe);
     li.appendChild(contenedor);
+    boton.textContent = "✕ Cerrar";
+    boton.setAttribute("aria-expanded", "true");
+    refrescar(contenedor);
+    contenedor.scrollIntoView({ behavior: "smooth", block: "nearest" });
   });
   return boton;
 }
@@ -244,6 +253,17 @@ function datosMotor() {
     entrenos: entrenos,
     hoy: new Date(),
   };
+}
+
+// Tocar el nombre del ejercicio también abre o cierra su vídeo.
+function hacerTocableParaVideo(zona, botonVideo) {
+  zona.classList.add("tocable");
+  zona.setAttribute("role", "button");
+  zona.tabIndex = 0;
+  zona.addEventListener("click", () => botonVideo.click());
+  zona.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); botonVideo.click(); }
+  });
 }
 
 // Fila con número, nombre, esquema (opcional), detalle y botones "vídeo" y "cambiar".
@@ -278,6 +298,7 @@ function crearFilaPropuesta(numero, ejercicio, titulo, esquema, detalle, alCambi
   const botonVideo = crearBotonVideo(ejercicio, li);
   if (botonVideo) {
     acciones.appendChild(botonVideo);
+    hacerTocableParaVideo(info, botonVideo);
   }
   const botonCambiar = crearBotonMini("↻ cambiar", () => {
     if (alCambiar()) {
@@ -612,6 +633,7 @@ function crearTarjetaEjercicio(item, etiqueta) {
     kg.value = anterior && anterior.kg ? String(anterior.kg) : "";
   }
 
+  let zonaVideo = null;
   if (libre) {
     const select = document.createElement("select");
     rellenarSelectEjercicios(select, false);
@@ -629,12 +651,22 @@ function crearTarjetaEjercicio(item, etiqueta) {
     pill.className = "pill";
     pill.textContent = etiqueta;
     titulo.append(nombre, pill);
+    // Vídeo para repasar la técnica mientras se apunta: se abre debajo del título.
+    zonaVideo = document.createElement("div");
+    const botonVideo = crearBotonVideo(e, zonaVideo);
+    if (botonVideo) {
+      const linea = document.createElement("div");
+      linea.className = "linea-video";
+      linea.appendChild(botonVideo);
+      titulo.appendChild(linea);
+    }
     const hecho = crearInterruptorHecho(tarjeta);
     cabecera.append(titulo, hecho.label);
     fila.ejercicio = e.id;
     fila.hecho = hecho.casilla;
   }
   tarjeta.append(cabecera, ayuda);
+  if (zonaVideo) tarjeta.appendChild(zonaVideo);
 
   fila.series = crearNumero(libre ? "" : item.series);
   fila.reps = crearNumero(libre ? "" : item.reps);
@@ -1533,6 +1565,7 @@ function mostrarBiblioteca() {
     const botonVideo = crearBotonVideo(ejercicio, li);
     if (botonVideo) {
       li.appendChild(botonVideo);
+      hacerTocableParaVideo(info, botonVideo);
     }
 
     listaBiblioteca.appendChild(li);

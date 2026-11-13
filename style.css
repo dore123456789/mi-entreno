@@ -185,10 +185,24 @@ label > input, label > select { margin-top: 4px; }
   border-radius: 999px;
 }
 .mini.video {
-  color: var(--acento);
-  background: var(--acento-suave);
+  padding: 7px 14px;
+  font-weight: 700;
+  color: var(--acento-texto);
+  background: var(--acento);
   border-color: transparent;
 }
+.mini.video[aria-expanded="true"] {
+  color: var(--acento);
+  background: var(--acento-suave);
+}
+
+/* Tocar el nombre del ejercicio abre su vídeo. */
+.info.tocable { cursor: pointer; border-radius: 8px; }
+.info.tocable:active { opacity: 0.7; }
+.info.tocable .nombre::after { content: " ▸"; color: var(--acento); font-weight: 700; }
+
+.linea-video { margin-top: 6px; }
+.tarjeta-reg .contenedor-video { margin-top: 4px; }
 
 .acciones { display: flex; gap: 6px; flex-shrink: 0; }
 
