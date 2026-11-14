@@ -197,8 +197,12 @@ function puntuar(e, fatiga) {
 // músculo principal (cardio) miran sus secundarios: un burpee no se propone
 // con el cuádriceps reventado. Los ligeros solo miran sus principales: están
 // pensados justo para los días en que la zona está cargada.
+// Los básicos pesados (principal, haltero) también miran los de apoyo: un press
+// banca no se propone con los hombros reventados aunque el pecho esté fresco.
 function estaSobrecargado(e, fatiga) {
-  const aMirar = e.musculos.length > 0 || e.tipo === "ligero" ? e.musculos : e.secundarios;
+  const pesado = e.tipo === "principal" || e.tipo === "haltero";
+  let aMirar = e.musculos.length > 0 || e.tipo === "ligero" ? e.musculos : e.secundarios;
+  if (pesado) aMirar = [...e.musculos, ...e.secundarios.filter(m => m !== "core")];
   return aMirar.some(m => fatiga[m] >= UMBRAL_ALTO);
 }
 
@@ -287,7 +291,10 @@ function candidatosHueco(hueco, ctx, usados, patronesUsados) {
   );
   const sinRepetirPatron = base.filter(e => !e.patron.some(p => patronesUsados.includes(p)));
   const noReciente = (l) => l.filter(e => !ctx.historial.recientes.has(e.id));
-  const lista = primeroConAlgo(noReciente(sinRepetirPatron), sinRepetirPatron, noReciente(base), base);
+  // El complementario (B) nunca repite patrón: si no hay, se omite.
+  const lista = hueco.papel === "B"
+    ? primeroConAlgo(noReciente(sinRepetirPatron), sinRepetirPatron)
+    : primeroConAlgo(noReciente(sinRepetirPatron), sinRepetirPatron, noReciente(base), base);
   if (!hueco.orden) return lista;
   // Con orden: el primer patrón de la lista que tenga candidatos.
   for (const p of hueco.patrones) {

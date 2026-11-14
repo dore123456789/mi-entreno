@@ -367,9 +367,14 @@ function pintarDescanso() {
   const tarjeta = document.createElement("div");
   tarjeta.className = "tarjeta";
   tarjeta.appendChild(crearCabecera("Hoy toca descanso", "MOVILIDAD", "suave"));
+  const cargados = Object.keys(MUSCULOS)
+    .filter(m => calcularFatiga(entrenos, new Date())[m] >= UMBRAL_ALTO)
+    .map(m => MUSCULOS[m]);
   tarjeta.appendChild(crearParrafo(
-    "Tus músculos están muy cargados. En vez de entrenar, haz esta sesión suave "
-    + "(2 rondas) o sal a dar un paseo.",
+    (propuesta.sesion ? "Hoy tocaba " + propuesta.sesion.nombre.toLowerCase() + ", pero " : "")
+    + (cargados.length ? "tienes " + listaBonita(cargados) + " con carga alta. " : "tus músculos están muy cargados. ")
+    + "Hoy es mejor recuperar: haz esta movilidad suave (2 rondas) o sal a dar un paseo. "
+    + "Mañana lo verás más fresco.",
     "ayuda"
   ));
   const ul = document.createElement("ul");
@@ -435,7 +440,11 @@ function pintarFuerza() {
   if (propuesta.fuerza.length === 0) {
     return;
   }
-  const tarjeta = crearTarjeta("Fuerza");
+  // Si la sesión del plan se ha cambiado por la carga, se dice en el título.
+  const cambiada = propuesta.sesion && propuesta.plantilla && propuesta.plantilla !== propuesta.sesion.tipo;
+  const tarjeta = crearTarjeta(cambiada
+    ? "Fuerza · " + NOMBRES_PLANTILLA[propuesta.plantilla] + " (en lugar de " + propuesta.sesion.nombre.toLowerCase() + ")"
+    : "Fuerza");
   const ul = document.createElement("ul");
   propuesta.fuerza.forEach((f, i) => {
     const e = porId[f.ejercicio];
