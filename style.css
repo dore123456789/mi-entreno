@@ -738,6 +738,22 @@ label > input, label > select { margin-top: 4px; }
 .dia-fecha strong { display: block; font-size: 13px; color: var(--suave); text-transform: uppercase; }
 .dia-fecha span { font-size: 20px; font-weight: 800; }
 .dia-plan.descanso .info { color: var(--suave); }
+.dia-plan { flex-wrap: wrap; }
+.dia-plan.futuro { cursor: pointer; }
+.dia-plan.abierto .info .nombre::after { content: " ▾"; }
+.avance-dia {
+  flex-basis: 100%;
+  margin-top: 4px;
+  padding: 12px 14px;
+  background: var(--fondo);
+  border-radius: 12px;
+  cursor: default;
+}
+.avance-dia dl { margin: 0; }
+.avance-dia dt { font-size: 12px; font-weight: 700; color: var(--acento); text-transform: uppercase; letter-spacing: 0.04em; }
+.avance-dia dd { margin: 2px 0 10px; line-height: 1.4; }
+.avance-dia .ayuda { margin: 0 0 10px; }
+.avance-dia .nota-avance { margin: 0; font-size: 12px; color: var(--suave); }
 
 .estado-dia {
   flex-shrink: 0;

@@ -1498,13 +1498,134 @@ function pintarPlan() {
     if (texto === hoyTexto) {
       li.style.cursor = "pointer";
       li.addEventListener("click", () => mostrarPantalla("hoy"));
+    } else if (texto > hoyTexto && !sesion.descanso) {
+      // Día futuro: al tocarlo se despliega el avance del entreno.
+      li.classList.add("futuro");
+      info.classList.add("tocable");
+      li.addEventListener("click", () => alternarAvance(li, fecha));
     }
     lista.appendChild(li);
   }
   tarjeta.appendChild(lista);
+  if (semanaVista >= actual) {
+    tarjeta.appendChild(crearParrafo("Toca un día que aún no ha llegado para ver qué entreno te tocaría.", "ayuda"));
+  }
   contenidoPlan.appendChild(tarjeta);
 
   contenidoPlan.appendChild(crearBoton("Cambiar objetivo o días", "secundario", () => mostrarPantalla("perfil")));
+}
+
+// ---------- Avance de días futuros ----------
+// Para saber qué tocaría un día futuro se simula el plan día a día, como si
+// cada sesión anterior se hiciera tal cual (esfuerzo normal). Así la carga de
+// los días previos cuenta igual que contará de verdad. El azar lleva semilla
+// para que el avance de un día no cambie cada vez que lo abres.
+
+function azarConSemilla(semilla) {
+  let s = semilla >>> 0;
+  return () => {
+    s = (s + 0x6D2B79F5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function semillaDe(texto) {
+  let h = 2166136261;
+  for (let i = 0; i < texto.length; i++) {
+    h ^= texto.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h;
+}
+
+function entrenoSimulado(fechaTexto, p) {
+  const bloques = [...p.fuerza, ...p.ligero].map(f => ({
+    tipo: "fuerza", ejercicio: f.ejercicio, series: f.series, reps: f.reps, esfuerzo: 80,
+  }));
+  if (p.wod) {
+    bloques.push({
+      tipo: "wod",
+      movimientos: p.wod.movimientos.map(m => ({ ejercicio: m.ejercicio, reps: m.reps })),
+      esfuerzo: p.wod.suave ? 60 : 80,
+    });
+  }
+  return { fecha: fechaTexto, bloques: bloques };
+}
+
+// Propuesta prevista para una fecha futura (o null si ese día no hay sesión).
+function avanceDe(fechaObjetivo) {
+  const objetivo = fechaISO(fechaObjetivo);
+  const hoy = new Date();
+  const simulados = [];
+  const azarReal = Math.random;
+  try {
+    for (let d = 0; d <= 120; d++) {
+      const fecha = sumarDias(hoy, d);
+      const texto = fechaISO(fecha);
+      if (texto > objetivo) break;
+      const sesion = sesionDelDia(plan, fecha);
+      if (!sesion || sesion.descanso || entrenadoEn(texto)) continue;
+      Math.random = azarConSemilla(semillaDe(plan.inicio + "·" + texto));
+      const p = proponerEntreno({
+        perfil: perfil, focos: [], sesion: sesion,
+        entrenos: entrenos.concat(simulados), hoy: fecha, sensaciones: null,
+      });
+      if (texto === objetivo) return p;
+      if (!p.movilidad) simulados.push(entrenoSimulado(texto, p));
+    }
+  } finally {
+    Math.random = azarReal;
+  }
+  return null;
+}
+
+function alternarAvance(li, fecha) {
+  const abierto = li.querySelector(".avance-dia");
+  if (abierto) {
+    abierto.remove();
+    li.classList.remove("abierto");
+    return;
+  }
+  li.classList.add("abierto");
+  const caja = document.createElement("div");
+  caja.className = "avance-dia";
+  const p = avanceDe(fecha);
+
+  if (!p) {
+    caja.appendChild(crearParrafo("No hay sesión prevista.", "ayuda"));
+  } else if (p.movilidad) {
+    caja.appendChild(crearParrafo("Si todo va según el plan, ese día tendrías bastante carga: tocaría descanso activo con movilidad.", "ayuda"));
+  } else {
+    for (const aviso of p.avisos) {
+      caja.appendChild(crearParrafo(aviso, "ayuda"));
+    }
+    const filas = [];
+    if (p.ligero.length) {
+      filas.push(["Suave", p.ligero.map(f => nombreDe(f.ejercicio) + " " + textoEsquema(f)).join(" · ")]);
+    }
+    if (p.fuerza.length) {
+      filas.push(["Fuerza", p.fuerza.map(f => nombreDe(f.ejercicio) + " " + textoEsquema(f)).join(" · ")]);
+    }
+    if (p.wod) {
+      filas.push([p.wod.suave ? "Cardio" : "WOD",
+        p.wod.formato + " " + p.wod.detalle + ": " + p.wod.movimientos.map(textoMovimiento).join(" + ")]);
+    }
+    const lista = document.createElement("dl");
+    for (const [titulo, texto] of filas) {
+      const dt = document.createElement("dt");
+      dt.textContent = titulo;
+      const dd = document.createElement("dd");
+      dd.textContent = texto;
+      lista.append(dt, dd);
+    }
+    caja.appendChild(lista);
+  }
+  caja.appendChild(crearParrafo("Es un avance: el mismo día se ajusta a lo que hayas hecho y a cómo te notes.", "nota-avance"));
+  li.appendChild(caja);
+  refrescar(caja);
 }
 
 document.getElementById("resumen-cuerpo").addEventListener("click", () => mostrarPantalla("cuerpo"));
