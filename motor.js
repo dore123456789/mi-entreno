@@ -374,6 +374,18 @@ function candidatosHueco(hueco, ctx, usados, patronesUsados) {
   return lista;
 }
 
+// Mejor un ejercicio que quepa entero que uno muy recortado. Si hay que
+// recortar, un básico pesado necesita al menos 3 series para que valga la pena.
+function candidatosQueCaben(hueco, ctx, objetivo, usados, patronesUsados) {
+  const lista = candidatosHueco(hueco, ctx, usados, patronesUsados);
+  const enteros = lista.filter(e => seriesPermitidas(e, ctx) >= esquemaHueco(objetivo, e, hueco)[0]);
+  if (enteros.length > 0) return enteros;
+  return lista.filter(e => {
+    const pesado = e.tipo === "principal" || e.tipo === "haltero";
+    return seriesPermitidas(e, ctx) >= (pesado ? 3 : 2);
+  });
+}
+
 function esquemaHueco(objetivo, e, hueco) {
   if (e.esquemaFijo) return e.esquemaFijo;
   if (hueco.papel === "D") return [3, e.wod ? e.wod.reps : 10];
@@ -642,7 +654,7 @@ function proponerEntreno(datos) {
   if (sesion && sesion.principal && clave === sesion.tipo) {
     const e = porId[sesion.principal];
     const caben = e ? seriesPermitidas(e, ctx) : 0;
-    if (e && respetaCuidados(e, ctx.perfil) && !estaSobrecargado(e, ctx.base) && caben >= 2) {
+    if (e && respetaCuidados(e, ctx.perfil) && !estaSobrecargado(e, ctx.base) && caben >= 3) {
       // Si no caben todas las series del plan sin pasar del tope, se recortan.
       const series = Math.min(sesion.esquema.series, caben);
       fuerza.push({ hueco: 0, ejercicio: e.id, series: series, reps: sesion.esquema.reps,
@@ -661,7 +673,7 @@ function proponerEntreno(datos) {
   // 4. Resto de huecos de la plantilla.
   for (let h = desde; h < plantilla.length; h++) {
     const hueco = plantilla[h];
-    const e = elegirMejor(candidatosHueco(hueco, ctx, fuerza.map(f => f.ejercicio), patronesUsados), ctx);
+    const e = elegirMejor(candidatosQueCaben(hueco, ctx, objetivo, fuerza.map(f => f.ejercicio), patronesUsados), ctx);
     if (!e) continue;
     const [seriesPlan, reps] = esquemaHueco(objetivo, e, hueco);
     const series = Math.min(seriesPlan, seriesPermitidas(e, ctx));
