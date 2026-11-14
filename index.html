@@ -245,15 +245,19 @@
   <section id="pantalla-biblioteca" hidden>
     <h1>Biblioteca</h1>
 
-    <label>Filtrar por grupo
+    <label>Filtrar por categoría
       <select id="filtro-biblioteca">
         <option value="todos">Todos</option>
-        <option value="pierna">Pierna</option>
-        <option value="tren superior">Tren superior</option>
+        <option value="fuerza">Fuerza</option>
+        <option value="halterofilia">Halterofilia</option>
+        <option value="gimnasticos">Gimnásticos</option>
+        <option value="hyrox">Hyrox</option>
+        <option value="metcon">Metcon</option>
+        <option value="tren-superior">Tren superior</option>
+        <option value="tren-inferior">Tren inferior</option>
+        <option value="accesorios">Accesorios</option>
         <option value="cardio">Cardio</option>
-        <option value="wod">WOD</option>
-        <option value="haltero">Haltero</option>
-        <option value="core">Core</option>
+        <option value="maquinas">Máquinas de cardio</option>
       </select>
     </label>
 
@@ -275,6 +279,10 @@
       <h2>¿Qué días entrenas?</h2>
       <p class="ayuda">Tu plan pondrá una sesión en cada día marcado (de 2 a 6). Las clases del box las apuntas aparte.</p>
       <div id="perfil-dias" class="dias"></div>
+
+      <h2>¿Qué días vas a clase al box? <span class="opcional">opcional</span></h2>
+      <p class="ayuda">El plan pondrá las sesiones duras lejos de esos días para que llegues descansada.</p>
+      <div id="perfil-box" class="dias"></div>
 
       <h2>Duración del plan</h2>
       <div class="fila">

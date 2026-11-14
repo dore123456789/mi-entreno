@@ -47,8 +47,6 @@ const SESIONES = {
     focos: ["core"],
     principales: [[], []],
     wodLargo: true,
-    // Sin básicos pesados: solo dos huecos de accesorio/gimnástico (core).
-    huecos: [2, 2],
   },
 };
 
@@ -130,10 +128,49 @@ function elegirPrincipal(tipo, bloque, perfil) {
   return valido || null;
 }
 
-// perfil = { objetivo, cuidar, dias: [0, 2, 4], semanas: 8 }
+// Sesiones duras: mejor no ponerlas el día después de una clase del box,
+// ni el mismo día, ni dos seguidas.
+const PESADAS = ["pierna", "haltero", "completo"];
+
+function permutaciones(lista) {
+  if (lista.length <= 1) return [lista];
+  const res = [];
+  lista.forEach((x, i) => {
+    const resto = lista.slice(0, i).concat(lista.slice(i + 1));
+    for (const p of permutaciones(resto)) res.push([x, ...p]);
+  });
+  return res;
+}
+
+// Reparte las sesiones entre los días de entreno con el menor número de choques
+// con las clases del box. Si no hay clases, se queda el orden de siempre.
+function asignarSesiones(dias, division, diasBox) {
+  let mejor = division;
+  let mejorPena = Infinity;
+  for (const orden of permutaciones(division)) {
+    let pena = 0;
+    orden.forEach((tipo, i) => {
+      const d = dias[i];
+      if (tipo !== division[i]) pena += 0.01;
+      if (!PESADAS.includes(tipo)) return;
+      if (diasBox.includes((d + 6) % 7)) pena += 3;   // el día después de clase
+      if (diasBox.includes(d)) pena += 2;             // el mismo día que clase
+      const anterior = dias.indexOf((d + 6) % 7);
+      if (anterior >= 0 && PESADAS.includes(orden[anterior])) pena += 1;
+    });
+    if (pena < mejorPena) {
+      mejor = orden;
+      mejorPena = pena;
+    }
+  }
+  return mejor;
+}
+
+// perfil = { objetivo, cuidar, dias: [0, 2, 4], diasBox: [1, 3], semanas: 8 }
 function crearPlan(perfil, hoy) {
   const dias = [...perfil.dias].sort((a, b) => a - b);
-  const division = DIVISIONES[dias.length];
+  const diasBox = Array.isArray(perfil.diasBox) ? perfil.diasBox : [];
+  const division = asignarSesiones(dias, DIVISIONES[dias.length], diasBox);
   const sesiones = {};
   dias.forEach((d, i) => { sesiones[d] = division[i]; });
 
@@ -151,8 +188,10 @@ function crearPlan(perfil, hoy) {
     version: 1,
     objetivo: perfil.objetivo,
     inicio: fechaISO(lunesDe(hoy)),
+    creado: fechaISO(hoy),
     semanas: perfil.semanas,
     dias: dias,
+    diasBox: diasBox,
     sesiones: sesiones,
     principales: principales,
   };
@@ -168,8 +207,9 @@ function sesionDelDia(plan, fecha) {
     return null;
   }
   const tipo = plan.sesiones[diaSemana(fecha)];
+  const box = Array.isArray(plan.diasBox) && plan.diasBox.includes(diaSemana(fecha));
   if (!tipo) {
-    return { descanso: true, semana: semana };
+    return { descanso: true, box: box, semana: semana };
   }
   const esquema = semanaPlan(plan.objetivo, semana);
   const s = SESIONES[tipo];
@@ -182,7 +222,7 @@ function sesionDelDia(plan, fecha) {
     nombre: s.nombre,
     focos: s.focos,
     wodLargo: Boolean(s.wodLargo),
-    huecos: s.huecos || null,
+    box: box,
     principal: plan.principales[esquema.bloque] ? plan.principales[esquema.bloque][tipo] : null,
     esquema: esquema,
     semana: semana,

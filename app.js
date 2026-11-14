@@ -400,21 +400,31 @@ function pintarCalentamiento() {
   const tarjeta = document.createElement("div");
   tarjeta.className = "tarjeta";
   tarjeta.appendChild(crearCabecera("Calentamiento", "≈ 10 MIN", "suave"));
-  tarjeta.appendChild(crearParrafo("Movilidad pensada para lo que vas a entrenar hoy.", "ayuda"));
+  tarjeta.appendChild(crearParrafo("Pensado para lo que vas a entrenar hoy.", "ayuda"));
 
-  const ul = document.createElement("ul");
   let n = 1;
-  if (c.cardio) {
-    ul.appendChild(crearFilaSimple(n++, nombreDe(c.cardio) + " suave", "5 min", "subir pulsaciones"));
-  }
-  for (const d of c.movilidad) {
-    ul.appendChild(crearFilaSimple(n++, d.nombre, d.dosis, zonasTexto(d)));
-  }
-  tarjeta.appendChild(ul);
+  const fase = (titulo, explicacion, lista) => {
+    if (!lista || lista.length === 0) return;
+    const h3 = document.createElement("h3");
+    h3.textContent = titulo;
+    tarjeta.appendChild(h3);
+    tarjeta.appendChild(crearParrafo(explicacion, "ayuda"));
+    const ul = document.createElement("ul");
+    for (const d of lista) {
+      ul.appendChild(crearFilaSimple(n++, d.nombre, d.dosis, zonasTexto(d)));
+    }
+    tarjeta.appendChild(ul);
+  };
+  fase("1 · Movilidad básica", "Suave y amplio, sin carga.", c.basica);
+  fase("2 · Últimos rangos", "Lento y con control, con pausa al final del recorrido.", c.rangos);
 
   if (c.aproximacion) {
+    const h3 = document.createElement("h3");
+    h3.textContent = (n > 1 ? "3" : "1") + " · Aproximación";
+    tarjeta.appendChild(h3);
     tarjeta.appendChild(crearParrafo(
-      "Antes de " + nombreDe(c.aproximacion) + ": 2-3 series de aproximación subiendo poco a poco el peso.",
+      "Antes de " + nombreDe(c.aproximacion) + ": 2-3 series subiendo poco a poco el peso. "
+      + "La primera repetición, 5 s bajando y 5 s de pausa abajo.",
       "ayuda"
     ));
   }
@@ -439,8 +449,7 @@ function pintarFuerza() {
     ));
   });
   tarjeta.appendChild(ul);
-  const esperados = propuesta.sesion && propuesta.sesion.huecos ? propuesta.sesion.huecos.length : HUECOS_FUERZA.length;
-  if (propuesta.fuerza.length < esperados) {
+  if (propuesta.fuerza.length < (propuesta.esperados || 0)) {
     tarjeta.appendChild(crearParrafo("Bloque más corto: hay músculos que necesitan descanso.", "ayuda"));
   }
   contenedorPropuesta.appendChild(tarjeta);
@@ -476,8 +485,17 @@ function pintarWod() {
   }
   const tarjeta = document.createElement("div");
   tarjeta.className = "tarjeta wod";
-  tarjeta.appendChild(crearCabecera("WOD", propuesta.wod.formato.toUpperCase()));
-  tarjeta.appendChild(crearParrafo(propuesta.wod.detalle, "ayuda"));
+  if (propuesta.wod.suave) {
+    tarjeta.appendChild(crearCabecera("Cardio suave", "ZONA 2", "suave"));
+    tarjeta.appendChild(crearParrafo(
+      "Hoy no hay movimientos de WOD seguros con tu carga. Mejor cardio tranquilo: "
+      + propuesta.wod.detalle + ".",
+      "ayuda"
+    ));
+  } else {
+    tarjeta.appendChild(crearCabecera("WOD", propuesta.wod.formato.toUpperCase()));
+    tarjeta.appendChild(crearParrafo(propuesta.wod.detalle, "ayuda"));
+  }
 
   const ul = document.createElement("ul");
   propuesta.wod.movimientos.forEach((mov, i) => {
@@ -1222,7 +1240,14 @@ function pintarPlanHoy() {
   etiqueta.textContent = "SEMANA " + (sesion.semana + 1) + " DE " + plan.semanas + " · " + fase.toUpperCase();
   tarjeta.appendChild(etiqueta);
 
-  if (sesion.descanso) {
+  if (sesion.descanso && sesion.box) {
+    tarjeta.appendChild(crearParrafo("Clase del box", "sesion-nombre"));
+    tarjeta.appendChild(crearParrafo("Hoy toca clase. Cuando acabes, apúntala para que cuente en tu carga.", "sesion-principal"));
+    if (entrenadoEn(fechaISO(hoy))) {
+      tarjeta.appendChild(crearParrafo("✓ Ya has apuntado un entreno hoy", "hecho-hoy"));
+    }
+    tarjeta.appendChild(crearBoton("Apuntar la clase", "principal", abrirHojaClase));
+  } else if (sesion.descanso) {
     tarjeta.appendChild(crearParrafo("Descanso", "sesion-nombre"));
     const proxima = proximaSesion(plan, hoy);
     tarjeta.appendChild(crearParrafo(
@@ -1233,6 +1258,9 @@ function pintarPlanHoy() {
     ));
     tarjeta.appendChild(crearParrafo("Recuperar también es entrenar. Si te apetece, movilidad o un paseo.", "ayuda"));
   } else {
+    if (sesion.box) {
+      tarjeta.appendChild(crearParrafo("Hoy también tienes clase en el box: si vas, apúntala y deja este entreno para otro día.", "ayuda"));
+    }
     tarjeta.appendChild(crearParrafo(sesion.nombre, "sesion-nombre"));
     tarjeta.appendChild(crearParrafo(textoPrincipal(sesion), "sesion-principal"));
     if (sesion.esquema.descarga) {
@@ -1345,11 +1373,11 @@ function pintarPlan() {
     info.className = "info";
     const nombre = document.createElement("span");
     nombre.className = "nombre";
-    nombre.textContent = sesion.descanso ? "Descanso" : sesion.nombre;
+    nombre.textContent = sesion.descanso ? (sesion.box ? "Clase del box" : "Descanso") : sesion.nombre;
     info.appendChild(nombre);
-    if (!sesion.descanso) {
+    if (!sesion.descanso || sesion.box) {
       const detalle = document.createElement("small");
-      detalle.textContent = textoPrincipal(sesion);
+      detalle.textContent = sesion.descanso ? "apúntala desde Hoy" : textoPrincipal(sesion) + (sesion.box ? " · también hay clase" : "");
       info.appendChild(detalle);
     }
 
@@ -1361,10 +1389,15 @@ function pintarPlan() {
     } else if (texto === hoyTexto && !sesion.descanso) {
       estado.classList.add("hoy");
       estado.textContent = "Hoy";
-    } else if (texto < hoyTexto && !sesion.descanso) {
+    } else if (texto < (plan.creado || plan.inicio)) {
+      // Antes de crear el plan: no cuenta como "no hecho".
+    } else if (texto < hoyTexto && (!sesion.descanso || sesion.box)) {
       estado.classList.add("fallado");
       estado.textContent = "No hecho";
-    } else if (!sesion.descanso) {
+    } else if (texto === hoyTexto && sesion.box && sesion.descanso) {
+      estado.classList.add("hoy");
+      estado.textContent = "Hoy";
+    } else if (!sesion.descanso || sesion.box) {
       estado.textContent = "Pendiente";
     }
 
@@ -1541,7 +1574,7 @@ const listaBiblioteca = document.getElementById("lista-biblioteca");
 
 function mostrarBiblioteca() {
   const filtro = filtroBiblioteca.value;
-  const visibles = (filtro === "todos" ? [...ejercicios] : filtrarPorGrupo(filtro))
+  const visibles = (filtro === "todos" ? [...ejercicios] : ejercicios.filter(e => (e.cats || []).includes(filtro)))
     .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
 
   contadorBiblioteca.textContent = visibles.length + " ejercicios";
@@ -1557,7 +1590,8 @@ function mostrarBiblioteca() {
     nombre.className = "nombre";
     nombre.textContent = ejercicio.nombre;
     const musculos = document.createElement("small");
-    musculos.textContent = textoMusculos(ejercicio);
+    const NIVEL = { principiante: "principiante", intermedio: "intermedio", avanzado: "avanzado" };
+    musculos.textContent = textoMusculos(ejercicio) + (ejercicio.nivel ? " · " + NIVEL[ejercicio.nivel] : "");
     info.appendChild(nombre);
     info.appendChild(musculos);
     li.appendChild(info);
@@ -1860,6 +1894,7 @@ const contObjetivos = document.getElementById("perfil-objetivos");
 const bienvenidaPerfil = document.getElementById("perfil-bienvenida");
 const mensajePerfil = document.getElementById("mensaje-perfil");
 const contDias = document.getElementById("perfil-dias");
+const contBox = document.getElementById("perfil-box");
 
 function pintarPerfil() {
   contObjetivos.textContent = "";
@@ -1888,22 +1923,27 @@ function pintarPerfil() {
     contObjetivos.appendChild(label);
   }
 
-  // Días de entreno (por defecto lunes, miércoles y viernes)
+  // Días de entreno (por defecto lunes, miércoles y viernes) y días de clase del box.
   const dias = perfil && Array.isArray(perfil.dias) ? perfil.dias : [0, 2, 4];
-  contDias.textContent = "";
-  DIAS_CORTOS.forEach((corto, d) => {
-    const label = document.createElement("label");
-    label.className = "dia";
-    label.title = DIAS_SEMANA[d];
-    const casilla = document.createElement("input");
-    casilla.type = "checkbox";
-    casilla.name = "dias";
-    casilla.value = String(d);
-    casilla.checked = dias.includes(d);
-    casilla.setAttribute("aria-label", DIAS_SEMANA[d]);
-    label.append(casilla, corto);
-    contDias.appendChild(label);
-  });
+  const diasBox = perfil && Array.isArray(perfil.diasBox) ? perfil.diasBox : [];
+  const pintarDias = (contenedor, nombre, marcados) => {
+    contenedor.textContent = "";
+    DIAS_CORTOS.forEach((corto, d) => {
+      const label = document.createElement("label");
+      label.className = "dia";
+      label.title = DIAS_SEMANA[d];
+      const casilla = document.createElement("input");
+      casilla.type = "checkbox";
+      casilla.name = nombre;
+      casilla.value = String(d);
+      casilla.checked = marcados.includes(d);
+      casilla.setAttribute("aria-label", DIAS_SEMANA[d]);
+      label.append(casilla, corto);
+      contenedor.appendChild(label);
+    });
+  };
+  pintarDias(contDias, "dias", dias);
+  pintarDias(contBox, "box", diasBox);
 
   const semanas = perfil && perfil.semanas ? perfil.semanas : 8;
   for (const radio of formPerfil.querySelectorAll('input[name="semanas"]')) {
@@ -1923,6 +1963,7 @@ function mismosDatosDePlan(a, b) {
     && a.objetivo === b.objetivo
     && a.semanas === b.semanas
     && JSON.stringify(a.dias) === JSON.stringify(b.dias)
+    && JSON.stringify(a.diasBox || []) === JSON.stringify(b.diasBox || [])
     && JSON.stringify([...a.cuidar].sort()) === JSON.stringify([...b.cuidar].sort());
 }
 
@@ -1947,7 +1988,8 @@ formPerfil.addEventListener("submit", async (evento) => {
     return;
   }
 
-  const nuevo = { version: 1, objetivo: elegido.value, cuidar: cuidar, dias: dias, semanas: semanas };
+  const diasBox = [...formPerfil.querySelectorAll('input[name="box"]:checked')].map(c => Number(c.value));
+  const nuevo = { version: 1, objetivo: elegido.value, cuidar: cuidar, dias: dias, diasBox: diasBox, semanas: semanas };
 
   // Si cambia algo que afecta al plan y ya había uno, se confirma antes de rehacerlo.
   const hayQueRehacer = !plan || !mismosDatosDePlan(perfil, nuevo);
