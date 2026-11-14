@@ -31,11 +31,67 @@ const OBJETIVOS = {
 // Un músculo necesita unas 48-72 h para recuperarse; a los 7 días ya no cuenta.
 const RECUPERACION = [1, 1, 0.7, 0.5, 0.3, 0.2, 0.1];
 
-// Carga a partir de la cual un músculo está "media" o "alta".
-// Una sentadilla 5×5 ayer deja el cuádriceps en 5 (media).
-// Si además hiciste thrusters, pasa de 8 (alta) y hoy no se propone.
-const UMBRAL_MEDIO = 4;
-const UMBRAL_ALTO = 8;
+// ---------- Escala 0-10 ----------
+// Internamente la carga se cuenta en "series efectivas" (1 por serie del
+// músculo principal, ½ de apoyo). Para la persona se muestra de 0 a 10:
+// 10/10 = unas 15 series acumuladas. Base: lo recomendado son 10-20 series
+// por músculo y semana, y una sesión dura llega a 10-12 (Schoenfeld y otros).
+// Así una sesión completa de un grupo deja el músculo hacia 7/10.
+const SERIES_POR_DECIMA = 1.5;
+
+function aDiez(series) {
+  return series / SERIES_POR_DECIMA;
+}
+
+function deDiez(decimas) {
+  return decimas * SERIES_POR_DECIMA;
+}
+
+function sobreDiez(valor) {
+  return Math.min(10, Math.round(aDiez(valor)));
+}
+
+// Niveles: media desde 4/10, alta desde 8/10 (ese músculo no se entrena fuerte).
+const UMBRAL_MEDIO = deDiez(4);
+const UMBRAL_ALTO = deDiez(8);
+
+// ---------- Tope de carga ----------
+// Ningún entreno debe dejar un músculo por encima del tope (en décimas):
+// lo normal es 8/10, que equivale a trabajar a RPE 7-8 (2-3 reps en la
+// recámara); en semanas de descarga 6/10 y en el pico del plan 9/10.
+const TOPE_NORMAL = 8;
+const TOPE_DESCARGA = 6;
+const TOPE_PICO = 9;
+
+// Un movimiento de WOD cuenta como 2 series efectivas: en un metcon las cargas
+// son moderadas y no se llega al fallo como en un bloque de fuerza.
+const SERIES_WOD = 2;
+
+// "¿Cómo te notas hoy?": zonas que la persona puede marcar.
+const ZONAS_SENSACION = {
+  piernas: { nombre: "Piernas", musculos: ["cuadriceps", "isquios", "gluteos", "gemelos"] },
+  superior: { nombre: "Pecho, hombros y brazos", musculos: ["pecho", "hombros", "brazos"] },
+  espalda: { nombre: "Espalda y lumbar", musculos: ["espalda", "lumbar"] },
+  core: { nombre: "Core", musculos: ["core"] },
+};
+
+// Lo que siente manda sobre el cálculo de ese día:
+//   fresca  → como mucho 3/10 (puede entrenar fuerte)
+//   cargada → al menos 7/10 (solo trabajo suave en esa zona)
+//   normal  → se queda el cálculo
+function aplicarSensaciones(fatiga, sensaciones) {
+  if (!sensaciones) return fatiga;
+  const res = { ...fatiga };
+  for (const zona in sensaciones) {
+    const z = ZONAS_SENSACION[zona];
+    if (!z) continue;
+    for (const m of z.musculos) {
+      if (sensaciones[zona] === "fresca") res[m] = Math.min(res[m], deDiez(3));
+      if (sensaciones[zona] === "cargada") res[m] = Math.max(res[m], deDiez(7));
+    }
+  }
+  return res;
+}
 
 const FORMATOS_WOD = ["AMRAP", "EMOM", "Por tiempo"];
 
@@ -84,7 +140,7 @@ function sumarCarga(fatiga, ejercicio, cantidad) {
 }
 
 // Devuelve { cuadriceps: 5.2, espalda: 0, ... } con la carga de los últimos 7 días.
-// Fuerza: cada serie suma 1. WOD: cada movimiento suma 3 (más si hiciste más reps
+// Fuerza: cada serie suma 1. WOD: cada movimiento suma 2 (cargas moderadas) (más si hiciste más reps
 // que las de referencia). El esfuerzo en % sube o baja la carga (80% = normal).
 function calcularFatiga(entrenos, hoy) {
   const fatiga = {};
@@ -108,7 +164,7 @@ function calcularFatiga(entrenos, hoy) {
             continue;
           }
           const referencia = e.wod ? e.wod.reps : mov.reps;
-          sumarCarga(fatiga, e, 3 * factor * Math.min(2, mov.reps / referencia));
+          sumarCarga(fatiga, e, SERIES_WOD * factor * Math.min(2, mov.reps / referencia));
         }
       } else {
         const e = porId[bloque.ejercicio];
@@ -282,9 +338,23 @@ function seguros(ctx, usados) {
   );
 }
 
+// Cuántas series se pueden hacer de un ejercicio sin que ningún músculo pase
+// del tope de hoy (contando lo que ya trae y lo previsto en la sesión).
+function seriesPermitidas(e, ctx) {
+  let max = Infinity;
+  for (const m of e.musculos) max = Math.min(max, ctx.tope - ctx.fatiga[m]);
+  for (const m of e.secundarios) {
+    const peso = m === "core" ? 0.25 : 0.5;
+    max = Math.min(max, (ctx.tope - ctx.fatiga[m]) / peso);
+  }
+  return Math.floor(max);
+}
+
 // Candidatos para un hueco. patronesUsados: los de la sesión hasta ahora.
+// Solo valen si caben al menos 2 series sin pasar del tope.
 function candidatosHueco(hueco, ctx, usados, patronesUsados) {
   const base = seguros(ctx, usados).filter(e =>
+    seriesPermitidas(e, ctx) >= 2 &&
     hueco.tipos.includes(e.tipo) &&
     e.patron.some(p => hueco.patrones.includes(p)) &&
     e.grupo.some(g => hueco.grupos.includes(g))
@@ -338,10 +408,11 @@ function zonaBloqueada(clave, ctx) {
   const deLaZona = ejercicios.filter(e =>
     a.tipos.includes(e.tipo) && e.grupo.some(g => a.grupos.includes(g)) && respetaCuidados(e, ctx.perfil)
   );
+  // Cargados: los que no dejan margen para 2 series sin pasar del tope.
   const cargados = new Set();
   for (const e of deLaZona) {
     for (const m of e.musculos) {
-      if (ctx.base[m] >= UMBRAL_ALTO) cargados.add(m);
+      if (ctx.base[m] >= ctx.tope - 2) cargados.add(m);
     }
   }
   return { cargados: [...cargados], porCuidados: deLaZona.length === 0 };
@@ -354,7 +425,7 @@ function listaBonita(lista) {
 function textoAviso(clave, bloqueo, conLigero, alternativa) {
   const zona = NOMBRES_PLANTILLA[clave];
   let texto = bloqueo.cargados.length > 0
-    ? "Tienes " + listaBonita(bloqueo.cargados.map(m => MUSCULOS[m])) + " con carga alta. Hoy no toca fuerza de " + zona + " para evitar sobrecargas."
+    ? "Tienes " + listaBonita(bloqueo.cargados.map(m => MUSCULOS[m])) + " a 7/10 o más. Hoy no toca fuerza de " + zona + " para no pasar de 8/10."
     : "No hay ejercicios de " + zona + " compatibles con las zonas que cuidas.";
   if (conLigero) texto += " Te dejo un bloque ligero de músculos pequeños.";
   if (alternativa) texto += " La fuerza de hoy va a " + NOMBRES_PLANTILLA[alternativa] + ".";
@@ -448,7 +519,10 @@ function crearCalentamiento(propuesta, perfil) {
 
 function candidatosWod(ctx, usados, patronesDia, modal) {
   // Nunca el patrón principal del día: antes un movimiento menos.
-  const sinPatronDia = seguros(ctx, usados).filter(e => e.wod && !e.patron.some(p => patronesDia.includes(p)));
+  // Cada movimiento de WOD cuenta como SERIES_WOD series: tiene que caber en el tope.
+  const sinPatronDia = seguros(ctx, usados).filter(e =>
+    e.wod && seriesPermitidas(e, ctx) >= SERIES_WOD && !e.patron.some(p => patronesDia.includes(p))
+  );
   return modal ? sinPatronDia.filter(e => e.modal === modal) : sinPatronDia;
 }
 
@@ -463,7 +537,7 @@ function crearWod(ctx, objetivo, sesion, patronesDia, usadosFuerza) {
     const e = elegirMejor(candidatosWod(ctx, usados, patronesDia, modal), ctx, 0.3);
     if (!e) continue;
     movimientos.push({ ejercicio: e.id, reps: repsWod(e, factorReps), modal: e.modal });
-    sumarCarga(ctx.fatiga, e, 3);
+    sumarCarga(ctx.fatiga, e, SERIES_WOD);
   }
 
   const [minMin, maxMin] = OBJETIVOS[objetivo].wodMin;
@@ -512,12 +586,18 @@ function crearWod(ctx, objetivo, sesion, patronesDia, usadosFuerza) {
 //   movilidad: [...]  (solo si hoy toca descanso)
 // }
 
+// datos.sensaciones (opcional): lo que la persona ha dicho hoy en "¿Cómo te notas?".
 function crearContexto(datos) {
-  const base = calcularFatiga(datos.entrenos, datos.hoy);
+  const base = aplicarSensaciones(calcularFatiga(datos.entrenos, datos.hoy), datos.sensaciones);
+  const esquema = datos.sesion && datos.sesion.esquema;
+  const tope = esquema && esquema.descarga ? TOPE_DESCARGA
+    : esquema && esquema.fase === "Pico" ? TOPE_PICO
+    : TOPE_NORMAL;
   return {
     perfil: datos.perfil,
+    tope: deDiez(tope),         // ningún músculo debe pasar de aquí (en series; tope en décimas)
     base: base,                 // carga de días anteriores: decide qué es seguro
-    fatiga: { ...base },        // + lo previsto hoy: sirve para puntuar
+    fatiga: { ...base },        // + lo previsto hoy: sirve para puntuar y para el tope
     historial: historialReciente(datos.entrenos, datos.hoy),
   };
 }
@@ -561,14 +641,17 @@ function proponerEntreno(datos) {
   let desde = 0;
   if (sesion && sesion.principal && clave === sesion.tipo) {
     const e = porId[sesion.principal];
-    if (e && respetaCuidados(e, ctx.perfil) && !estaSobrecargado(e, ctx.base)) {
-      fuerza.push({ hueco: 0, ejercicio: e.id, series: sesion.esquema.series, reps: sesion.esquema.reps,
-        esfuerzoObjetivo: sesion.esquema.esfuerzo, delPlan: true });
-      sumarCarga(ctx.fatiga, e, sesion.esquema.series);
+    const caben = e ? seriesPermitidas(e, ctx) : 0;
+    if (e && respetaCuidados(e, ctx.perfil) && !estaSobrecargado(e, ctx.base) && caben >= 2) {
+      // Si no caben todas las series del plan sin pasar del tope, se recortan.
+      const series = Math.min(sesion.esquema.series, caben);
+      fuerza.push({ hueco: 0, ejercicio: e.id, series: series, reps: sesion.esquema.reps,
+        esfuerzoObjetivo: sesion.esquema.esfuerzo, delPlan: true, ajustado: series < sesion.esquema.series });
+      sumarCarga(ctx.fatiga, e, series);
       patronesUsados.push(...e.patron);
       desde = 1;
     } else if (e) {
-      const cargados = e.musculos.filter(m => fatigaInicial[m] >= UMBRAL_ALTO).map(m => MUSCULOS[m]);
+      const cargados = e.musculos.filter(m => fatigaInicial[m] >= ctx.tope - 2).map(m => MUSCULOS[m]);
       avisos.push("Tu plan marcaba " + e.nombre + " hoy"
         + (cargados.length ? ", pero tienes " + listaBonita(cargados) + " con carga alta" : "")
         + ". Lo cambiamos por otro ejercicio para no sobrecargar.");
@@ -580,8 +663,9 @@ function proponerEntreno(datos) {
     const hueco = plantilla[h];
     const e = elegirMejor(candidatosHueco(hueco, ctx, fuerza.map(f => f.ejercicio), patronesUsados), ctx);
     if (!e) continue;
-    const [series, reps] = esquemaHueco(objetivo, e, hueco);
-    fuerza.push({ hueco: h, ejercicio: e.id, series: series, reps: reps });
+    const [seriesPlan, reps] = esquemaHueco(objetivo, e, hueco);
+    const series = Math.min(seriesPlan, seriesPermitidas(e, ctx));
+    fuerza.push({ hueco: h, ejercicio: e.id, series: series, reps: reps, ajustado: series < seriesPlan });
     sumarCarga(ctx.fatiga, e, series);
     if (hueco.papel !== "D") patronesUsados.push(...e.patron);
   }
@@ -636,7 +720,7 @@ function sustituirEnPropuesta(propuesta, datos, parte, i) {
   });
   if (propuesta.wod) {
     propuesta.wod.movimientos.forEach((m, j) => {
-      if (!(parte === "wod" && j === i)) sumarCarga(ctx.fatiga, porId[m.ejercicio], 3);
+      if (!(parte === "wod" && j === i)) sumarCarga(ctx.fatiga, porId[m.ejercicio], SERIES_WOD);
     });
   }
 

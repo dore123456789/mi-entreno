@@ -618,6 +618,34 @@ label > input, label > select { margin-top: 4px; }
   border-radius: 10px;
 }
 
+/* ---------- ¿Cómo te notas hoy? ---------- */
+
+.tarjeta.notas .ayuda { margin-bottom: 4px; }
+.fila-nota {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--borde);
+}
+.fila-nota:last-child { border-bottom: none; }
+.zona-nota { font-size: 15px; font-weight: 600; }
+.opciones-nota { display: flex; gap: 6px; }
+.nota {
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--suave);
+  background: var(--fondo);
+  border: 1.5px solid var(--borde);
+  border-radius: 999px;
+}
+.nota.fresca[aria-pressed="true"] { color: #fff; background: var(--m-baja); border-color: var(--m-baja); }
+.nota.normal[aria-pressed="true"] { color: #fff; background: var(--m-media); border-color: var(--m-media); }
+.nota.cargada[aria-pressed="true"] { color: #fff; background: var(--m-alta); border-color: var(--m-alta); }
+
 /* ---------- Plan ---------- */
 
 .botones-dobles { display: flex; gap: 8px; margin: 4px 0 8px; }

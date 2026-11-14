@@ -152,7 +152,7 @@ function crearPunto(nivel) {
 
 // Chips de los músculos con carga media o alta (resumen de Hoy).
 function pintarCargaHoy() {
-  const fatiga = calcularFatiga(entrenos, new Date());
+  const fatiga = fatigaActual();
   cargaHoy.textContent = "";
 
   const cargados = Object.keys(MUSCULOS)
@@ -172,7 +172,7 @@ function pintarCargaHoy() {
     const chip = document.createElement("span");
     chip.className = "chip";
     chip.appendChild(crearPunto(nivel));
-    chip.appendChild(document.createTextNode(MUSCULOS[m] + " · " + NOMBRES_NIVEL[nivel].toLowerCase()));
+    chip.appendChild(document.createTextNode(MUSCULOS[m] + " · " + sobreDiez(fatiga[m]) + "/10"));
     cargaHoy.appendChild(chip);
   }
 }
@@ -243,6 +243,88 @@ const cargaHoy = document.getElementById("carga-hoy");
 let focos = [];
 let propuesta = null;
 
+// ---------- "¿Cómo te notas hoy?" ----------
+// Se guarda por fecha: { "2026-11-14": { piernas: "cargada", ... } }.
+// Solo cuenta el día en que se dice.
+let sensaciones = leerGuardado("sensaciones", {});
+if (!sensaciones || typeof sensaciones !== "object") sensaciones = {};
+
+function sensacionesHoy() {
+  return sensaciones[fechaISO(new Date())] || null;
+}
+
+// Carga de hoy: el cálculo, corregido por lo que la persona dice que siente.
+function fatigaActual() {
+  return aplicarSensaciones(calcularFatiga(entrenos, new Date()), sensacionesHoy());
+}
+
+const contNotas = document.getElementById("como-te-notas");
+const ESTADOS_SENSACION = [["fresca", "Fresca"], ["normal", "Normal"], ["cargada", "Cargada"]];
+
+function pintarComoTeNotas() {
+  contNotas.textContent = "";
+  const hoyTxt = fechaISO(new Date());
+  const actuales = sensaciones[hoyTxt] || {};
+
+  const tarjeta = document.createElement("div");
+  tarjeta.className = "tarjeta notas";
+  tarjeta.appendChild(crearCabecera("¿Cómo te notas hoy?", "OPCIONAL", "suave"));
+  tarjeta.appendChild(crearParrafo("Lo que digas manda sobre el cálculo de la app.", "ayuda"));
+
+  for (const zona in ZONAS_SENSACION) {
+    const fila = document.createElement("div");
+    fila.className = "fila-nota";
+    const nombre = document.createElement("span");
+    nombre.className = "zona-nota";
+    nombre.textContent = ZONAS_SENSACION[zona].nombre;
+    const opciones = document.createElement("div");
+    opciones.className = "opciones-nota";
+    for (const [valor, texto] of ESTADOS_SENSACION) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "nota " + valor;
+      b.textContent = texto;
+      b.setAttribute("aria-pressed", String(actuales[zona] === valor));
+      b.addEventListener("click", () => elegirSensacion(zona, valor));
+      opciones.appendChild(b);
+    }
+    fila.append(nombre, opciones);
+    tarjeta.appendChild(fila);
+  }
+  contNotas.appendChild(tarjeta);
+}
+
+function elegirSensacion(zona, valor) {
+  const hoyTxt = fechaISO(new Date());
+  const delDia = { ...(sensaciones[hoyTxt] || {}) };
+  // Tocar otra vez la opción marcada la quita.
+  if (delDia[zona] === valor) delete delDia[zona];
+  else delDia[zona] = valor;
+  // Solo se guardan los últimos 30 días.
+  const nuevas = {};
+  for (const f of Object.keys(sensaciones).sort().slice(-30)) nuevas[f] = sensaciones[f];
+  nuevas[hoyTxt] = delDia;
+  sensaciones = nuevas;
+  escribirGuardado("sensaciones", sensaciones);
+
+  pintarComoTeNotas();
+  pintarCargaHoy();
+  refrescar(cargaHoy);
+  // Si ya había un entreno propuesto, se recalcula con lo que siente.
+  if (propuesta) {
+    propuesta = proponerEntreno({
+      perfil: perfil,
+      focos: propuesta.sesion ? [] : focos,
+      sesion: propuesta.sesion || null,
+      entrenos: entrenos,
+      hoy: new Date(),
+      sensaciones: sensacionesHoy(),
+    });
+    mostrarPropuesta();
+    mostrarToast("Entreno ajustado a cómo te notas");
+  }
+}
+
 // Datos para el motor. Si la propuesta actual es del plan, se mantiene su sesión
 // (así "cambiar" respeta el foco de la sesión).
 function datosMotor() {
@@ -252,6 +334,7 @@ function datosMotor() {
     sesion: propuesta && propuesta.sesion ? propuesta.sesion : null,
     entrenos: entrenos,
     hoy: new Date(),
+    sensaciones: sensacionesHoy(),
   };
 }
 
@@ -368,7 +451,7 @@ function pintarDescanso() {
   tarjeta.className = "tarjeta";
   tarjeta.appendChild(crearCabecera("Hoy toca descanso", "MOVILIDAD", "suave"));
   const cargados = Object.keys(MUSCULOS)
-    .filter(m => calcularFatiga(entrenos, new Date())[m] >= UMBRAL_ALTO)
+    .filter(m => fatigaActual()[m] >= UMBRAL_ALTO)
     .map(m => MUSCULOS[m]);
   tarjeta.appendChild(crearParrafo(
     (propuesta.sesion ? "Hoy tocaba " + propuesta.sesion.nombre.toLowerCase() + ", pero " : "")
@@ -453,7 +536,7 @@ function pintarFuerza() {
       e,
       e.nombre,
       textoEsquema(f) + (f.esfuerzoObjetivo ? " · ≈" + f.esfuerzoObjetivo + "%" : ""),
-      (f.delPlan ? "principal del plan · " : "") + textoMusculos(e),
+      (f.delPlan ? "principal del plan · " : "") + (f.ajustado ? "series ajustadas a tu carga · " : "") + textoMusculos(e),
       () => sustituirEnPropuesta(propuesta, datosMotor(), "fuerza", i)
     ));
   });
@@ -1177,7 +1260,7 @@ botonProponer.addEventListener("click", () => {
     mostrarPantalla("perfil");
     return;
   }
-  propuesta = proponerEntreno({ perfil: perfil, focos: focos, sesion: null, entrenos: entrenos, hoy: new Date() });
+  propuesta = proponerEntreno({ perfil: perfil, focos: focos, sesion: null, entrenos: entrenos, hoy: new Date(), sensaciones: sensacionesHoy() });
   mostrarPropuesta();
   contenedorPropuesta.scrollIntoView({ behavior: "smooth", block: "start" });
 });
@@ -1206,7 +1289,7 @@ function crearBoton(texto, clase, accion) {
 }
 
 function empezarEntrenoPlan(sesion) {
-  propuesta = proponerEntreno({ perfil: perfil, focos: [], sesion: sesion, entrenos: entrenos, hoy: new Date() });
+  propuesta = proponerEntreno({ perfil: perfil, focos: [], sesion: sesion, entrenos: entrenos, hoy: new Date(), sensaciones: sensacionesHoy() });
   otroEntreno.hidden = true;
   botonOtro.classList.remove("activo");
   mostrarPropuesta();
@@ -1503,7 +1586,7 @@ function mostrarDetalleMusculo(fatiga) {
   const estado = document.createElement("span");
   estado.className = "estado";
   estado.appendChild(crearPunto(nivel));
-  estado.appendChild(document.createTextNode("Carga " + NOMBRES_NIVEL[nivel].toLowerCase()));
+  estado.appendChild(document.createTextNode("Carga " + NOMBRES_NIVEL[nivel].toLowerCase() + " · " + sobreDiez(fatiga[m]) + "/10"));
   cabecera.appendChild(h2);
   cabecera.appendChild(estado);
   detalleMusculo.appendChild(cabecera);
@@ -1529,7 +1612,7 @@ function mostrarDetalleMusculo(fatiga) {
 }
 
 function mostrarCuerpo() {
-  const fatiga = calcularFatiga(entrenos, new Date());
+  const fatiga = fatigaActual();
 
   for (const zona of zonasMusculo) {
     const m = zona.dataset.musculo;
@@ -1555,11 +1638,11 @@ function mostrarCuerpo() {
     barra.className = "barra";
     const relleno = document.createElement("span");
     relleno.className = nivel;
-    relleno.style.width = Math.max(4, Math.min(100, fatiga[m] / (UMBRAL_ALTO * 1.5) * 100)) + "%";
+    relleno.style.width = Math.max(4, Math.min(100, aDiez(fatiga[m]) / 10 * 100)) + "%";
     barra.appendChild(relleno);
     const etiqueta = document.createElement("span");
     etiqueta.className = "nivel";
-    etiqueta.textContent = NOMBRES_NIVEL[nivel];
+    etiqueta.textContent = sobreDiez(fatiga[m]) + "/10";
 
     fila.appendChild(nombre);
     fila.appendChild(barra);
@@ -2149,6 +2232,7 @@ function mostrarPantalla(nombre) {
   if (nombre === "hoy") {
     pintarSaludo();
     pintarPlanHoy();
+    pintarComoTeNotas();
     pintarCargaHoy();
   }
   if (nombre === "plan") {
